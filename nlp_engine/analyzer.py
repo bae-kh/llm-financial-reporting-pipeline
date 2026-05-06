@@ -5,9 +5,8 @@ from pydantic import BaseModel, ValidationError, Field
 from openai import AsyncOpenAI, OpenAIError
 from config.settings import Settings
 
-# 로거 설정
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
+
 
 # Pydantic 모델을 통한 강력한 JSON 검증 구조
 class SentimentResult(BaseModel):
@@ -15,20 +14,27 @@ class SentimentResult(BaseModel):
     sentiment_score: float = Field(..., ge=-1.0, le=1.0, description="Score between -1.0 and 1.0")
     confidence: int = Field(..., ge=0, le=100, description="Confidence level from 0 to 100")
 
+
 class SentimentAnalyzer:
     """
     OpenAI GPT API를 비동기식(asyncio)으로 호출하여 뉴스 텍스트의 감성을 평가하는 클래스입니다.
     향후 고빈도 혹은 병렬 처리를 위해 AsyncOpenAI 클라이언트를 사용합니다.
+
+    [3중 방어막 구조]
+    1. OpenAI API의 response_format={"type": "json_object"}로 JSON 반환 확률 극대화
+    2. json.loads + try-except으로 파싱 에러 시 중립값(0.0) 대체
+    3. Pydantic 모델(SentimentResult)로 값 범위(-1.0~1.0) 강력 검증
     """
+
     def __init__(self, settings: Settings, use_local_llm: bool = False):
         self.settings = settings
         self.use_local_llm = use_local_llm
-        
+
         # 비동기 OpenAI 클라이언트 생성 (로컬 LLM 스위칭)
         if self.use_local_llm:
             self.client = AsyncOpenAI(
                 base_url="http://localhost:11434/v1",
-                api_key="ollama" # 필요한 포맷을 맞추기 위한 더미 키
+                api_key="ollama"  # 필요한 포맷을 맞추기 위한 더미 키
             )
         else:
             self.client = AsyncOpenAI(api_key=self.settings.OPENAI_API_KEY)
@@ -67,7 +73,7 @@ Your response MUST be entirely and exclusively a valid JSON object matching the 
 {news_text}
 """
         try:
-            # 10초 타임아웃을 설정한 비동기 호출 (응답 형식 JSON 강제)
+            # 타임아웃을 설정한 비동기 호출 (응답 형식 JSON 강제)
             model_name = "llama3" if self.use_local_llm else "gpt-4o-mini"
             response = await self.client.chat.completions.create(
                 model=model_name,
@@ -76,17 +82,17 @@ Your response MUST be entirely and exclusively a valid JSON object matching the 
                     {"role": "user", "content": system_prompt}
                 ],
                 response_format={"type": "json_object"},
-                timeout=10.0
+                timeout=self.settings.API_TIMEOUT
             )
 
             raw_content = response.choices[0].message.content
-            
+
             # 파이썬 json 모듈로 1차 파싱
             parsed_json = json.loads(raw_content)
-            
+
             # Pydantic 모델을 통한 2차 강력 검증 (타입 체크 및 -1.0 ~ 1.0 구간 바운딩 체크)
             validated_data = SentimentResult(**parsed_json)
-            
+
             return validated_data.reasoning, validated_data.sentiment_score, validated_data.confidence
 
         except OpenAIError as e:

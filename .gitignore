@@ -4,8 +4,8 @@ __pycache__/
 .pytest_cache/
 .DS_Store
 
-# Legacy
-_archive/
+# Logs
+daily_trade.log
 
 # Temporary & Intermediate Data
 filtered_tesla_news.csv

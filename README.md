@@ -5,6 +5,7 @@
 ![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B?logo=streamlit)
 ![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?logo=sqlite)
 ![Ollama](https://img.shields.io/badge/Ollama-Llama--3-white)
+![pytest](https://img.shields.io/badge/pytest-32_passed-brightgreen)
 
 자연어 처리(NLP) 기반의 뉴스 감성 분석과 정량적 기술 지표(RSI, MACD)를 결합한 **하이브리드 퀀트 트레이딩 시스템**입니다. 단순한 백테스트 스크립트를 넘어, AWS EC2 클라우드 환경에서 무중단으로 동작하며 증권사 API 실거래 체결, 트랜잭션 로깅, 웹 대시보드 시각화, 모바일 모니터링 알림 체계를 모두 갖춘 Full-Stack MLOps 파이프라인입니다.
 
@@ -26,25 +27,78 @@
 graph TD
     subgraph Cloud_AWS ["Cloud Infrastructure (AWS EC2)"]
         CRON[Linux Crontab<br>Scheduler]
-        AT[Trading Engine<br>`auto_trade.py`]
-        DB[(SQLite DB<br>`quant_trade.db`)]
-        UI[Streamlit Dashboard<br>`app.py`]
+        AT[TradingEngine<br>auto_trade.py]
+        DB[(SQLite DB<br>quant_trade.db)]
+        UI[Streamlit Dashboard<br>app.py]
+    end
+
+    subgraph Modules ["Internal Modules"]
+        CFG[Settings<br>config/settings.py]
+        NF[NewsFetcher<br>data_pipeline/news_fetcher.py]
+        PF[PriceFetcher<br>data_pipeline/price_fetcher.py]
+        SA[SentimentAnalyzer<br>nlp_engine/analyzer.py]
+        TG_MOD[TelegramNotifier<br>notifications/telegram.py]
+        DBL[DBLogger<br>database/db_logger.py]
     end
 
     subgraph External_API ["External Interfaces"]
-        YF[yfinance API<br>Live Price & News]
+        YF[yfinance API<br>Live Price]
         LLM[Local LLM<br>Ollama: Llama-3]
         KIS[Korea Investment API<br>Order Execution]
         TG[Telegram API<br>Real-time Alerts]
+        RSS[Google News RSS<br>News Headlines]
     end
 
     CRON -->|Daily Trigger 23:35| AT
-    YF -->|Real-time Data| AT
-    AT <-->|Sentiment Analysis| LLM
+    CFG -->|Config Injection| AT
+    AT --> NF
+    AT --> PF
+    AT --> SA
+    AT --> TG_MOD
+    AT --> DBL
+    NF -->|RSS Crawling| RSS
+    PF -->|Real-time Data| YF
+    SA <-->|Sentiment Analysis| LLM
     AT -->|Order Routing| KIS
-    AT -->|Transaction Logs| DB
-    AT -->|Status & Errors| TG
+    DBL -->|Transaction Logs| DB
+    TG_MOD -->|Status & Errors| TG
     DB -->|Data Query| UI
+```
+
+---
+
+## 📁 프로젝트 구조
+
+```
+aibitcoin-main/
+├── config/
+│   ├── __init__.py
+│   └── settings.py          # 중앙 집중형 설정 허브 (환경 분기 + 전략 파라미터)
+├── data_pipeline/
+│   ├── __init__.py
+│   ├── price_fetcher.py     # yfinance 주가 데이터 + RSI/MACD 기술적 지표
+│   └── news_fetcher.py      # Google News RSS 뉴스 크롤러
+├── nlp_engine/
+│   ├── __init__.py
+│   └── analyzer.py          # LLM 감성 분석 (OpenAI / Ollama 스위칭)
+├── database/
+│   ├── __init__.py
+│   └── db_logger.py         # SQLite 트랜잭션 로깅 (WAL 모드)
+├── notifications/
+│   ├── __init__.py
+│   └── telegram.py          # 텔레그램 실시간 알림
+├── tests/
+│   ├── conftest.py           # 테스트 공용 Fixture
+│   ├── test_analyzer.py      # LLM 파싱 방어 테스트 (10개)
+│   ├── test_decision_tree.py # 의사결정 경계값 테스트 (14개)
+│   ├── test_news_fetcher.py  # 뉴스 크롤링 실패 방어 테스트 (5개)
+│   └── test_db_logger.py     # DB 기록 무결성 테스트 (3개)
+├── auto_trade.py             # TradingEngine 클래스 (메인 파이프라인)
+├── app.py                    # Streamlit 대시보드
+├── .env.example              # 환경 변수 템플릿 (안전)
+├── requirements.txt
+├── SYSTEM_RULES.md           # 시스템 아키텍처 규칙
+└── INSTRUCTIONS.md           # 코드 작성 가이드라인
 ```
 
 ---
@@ -59,6 +113,9 @@ graph TD
 
 ### 3. MLOps 기반 실시간 모니터링 (Telegram)
 서버에 접속하지 않아도 시스템 가동 상태, AI 판단 근거, 매수/매도 체결 영수증 및 치명적 에러 로그가 텔레그램 봇 API를 통해 관리자의 스마트폰으로 즉각 푸시(Push)되는 무인화 운영 체계를 구축했습니다.
+
+### 4. 32개 단위 테스트 (pytest)
+LLM 응답 파싱 방어, 의사결정 경계값 검증, 뉴스 크롤링 실패 방어, DB 기록 무결성 등 핵심 리스크 지점을 32개 테스트 케이스로 커버합니다. `pytest tests/ -v`로 전체 테스트를 실행할 수 있습니다.
 
 ---
 
@@ -76,7 +133,7 @@ graph TD
 
 ### 3. 로컬 LLM의 비결정적 JSON 붕괴 방어 (Fault Tolerance)
 - **Problem**: GPT-4와 달리 로컬 오픈소스 모델(Llama-3)은 프롬프트 지시를 가끔 무시하고 `{"score": 0.5}` 대신 "Here is the result..."와 같은 불필요한 텍스트를 뱉어내어 파이프라인 전체를 `JSONDecodeError`로 마비시켰습니다.
-- **Solution**: 단순 파싱이 아닌 정규표현식(Regex)을 도입하고, `try-except` 블록으로 철저히 감쌌습니다. 파싱에 실패할 경우 시스템이 다운되는 대신 강제로 '중립(Score: 0.0)' 값을 리턴하도록 설계하여 **파이프라인의 무중단 가용성을 보장**했습니다.
+- **Solution**: 3중 방어막을 구축했습니다. (1) `response_format={"type": "json_object"}` 강제, (2) `json.loads` + `try-except JSONDecodeError`로 파싱 실패 시 중립값(0.0) 대체, (3) Pydantic 모델(`SentimentResult`)로 `-1.0~1.0` 범위 강력 검증. 이 방어 로직은 `tests/test_analyzer.py`의 10개 단위 테스트로 검증됩니다.
 
 ### 4. 시계열 데이터 결측치(NaN) 정합성 유지 전략
 - **Problem**: 주말 등 휴장일이나 통신 지연으로 인해 API 호출 시 주가 데이터에 결측치가 발생하면, 전체 파이프라인이나 대시보드의 데이터 프레임이 어긋나는 현상이 발생했습니다.
@@ -85,20 +142,38 @@ graph TD
 ### 5. 프론트-백엔드 간 스키마 불일치 연쇄 장애 차단 (Defensive Programming)
 - **Problem**: 백엔드 증권사 API 연동 전략 수정으로 반환되는 데이터 형식(Columns)이 변동될 때마다, 이를 읽어오는 프론트엔드 대시보드가 `KeyError`를 뱉으며 하얗게 크래시 되었습니다.
 - **Solution**: 데이터 결측이나 형식 불일치 시 시스템이 죽지 않고 유연하게 대처하도록 데이터 프레임의 컬럼 교집합을 먼저 추출(`[col for col in target_cols if col in df.columns]`)하고, 타입 검사 및 예외 처리를 수행하는 **방어적 프로그래밍(Defensive Programming)**을 엄격하게 적용하여 모듈 간 강한 결합을 풀어냈습니다.
+
+### 6. God Function → OOP 클래스 리팩토링
+- **Problem**: 초기 `auto_trade.py`의 `run_daily_pipeline()` 함수가 140줄짜리 단일 함수로, 인증부터 주문까지 모든 로직이 혼재되어 단위 테스트와 유지보수가 불가능했습니다.
+- **Solution**: `TradingEngine` 클래스로 전면 리팩토링하여 인증(`_authenticate`), 잔고 조회(`_fetch_balance`), 주문 실행(`_execute_order`), 의사결정(`evaluate_sell_signal`, `evaluate_buy_signal`) 각각을 독립 메서드로 분리했습니다. 매수/매도 주문 함수의 95% 코드 중복도 `_execute_order`로 통합하여 제거했습니다.
+
 ---
 
 ## ⚙️ 인프라 배포 명세서 (Deployment)
 
 1. **Repository Clone & Virtual Environment**
 ```bash
-git clone [https://github.com/사용자계정/nlp-quant-trade.git](https://github.com/사용자계정/nlp-quant-trade.git)
+git clone https://github.com/bae-kh/nlp-quant-trade.git
 cd nlp-quant-trade
 python3 -m venv venv
 source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2. **Local LLM Init (Ollama & Swap Memory Allocation)**
+2. **환경 변수 설정**
+```bash
+cp .env.example .env
+# .env 파일을 열어 실제 API 키를 입력합니다.
+# KIS_ENVIRONMENT="virtual" (모의투자) 또는 "production" (실전)
+```
+
+3. **테스트 실행**
+```bash
+pytest tests/ -v
+# 32 passed ✅
+```
+
+4. **Local LLM Init (Ollama & Swap Memory Allocation)**
 ```bash
 # OOM 방지를 위한 Swap 설정 필수
 sudo fallocate -l 4G /swapfile
@@ -106,17 +181,17 @@ sudo chmod 600 /swapfile
 sudo mkswap /swapfile
 sudo swapon /swapfile
 
-curl -fsSL [https://ollama.com/install.sh](https://ollama.com/install.sh) | sh
+curl -fsSL https://ollama.com/install.sh | sh
 ollama pull llama3
 ```
 
-3. **Background Dashboard Serving**
+5. **Background Dashboard Serving**
 ```bash
 # AWS 보안 그룹 8501 포트 개방 필요
 nohup streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
 ```
 
-4. **Batch Scheduler Config (Crontab)**
+6. **Batch Scheduler Config (Crontab)**
 ```bash
 crontab -e
 # KST 23:35 (미국장 개장 후 변동성 안정화 시점) 데일리 트리거

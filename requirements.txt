@@ -1,8 +1,17 @@
+# === Core Dependencies ===
 pandas
 yfinance
-streamlit
 openai
 python-dotenv
-tqdm
 pydantic
 ta
+requests
+
+# === Dashboard ===
+streamlit
+plotly
+
+# === Testing ===
+pytest
+pytest-asyncio
+pytest-mock
