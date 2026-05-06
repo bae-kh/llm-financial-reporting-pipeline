@@ -12,9 +12,11 @@ import yfinance as yf
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 from config.settings import Settings
+from backtest.engine import BacktestEngine
+from backtest.metrics import RiskMetrics
 
 # 페이지 기본 설정
-st.set_page_config(page_title="자동 매매 퀀트 대시보드", layout="wide")
+st.set_page_config(page_title="Financial Data Intelligence Dashboard", layout="wide")
 
 settings = Settings()
 DB_PATH = settings.DB_PATH
@@ -160,3 +162,63 @@ if not trade_df.empty:
     st.dataframe(display_df, width='stretch', height=400)
 else:
     st.write("DB 테이블이 비어 있습니다.")
+
+# ============================================================
+# 5. 백테스트 성과 분석 섹션
+# ============================================================
+st.divider()
+st.subheader("📊 백테스트 성과 분석 (2023~2025)")
+st.caption("과거 데이터에 현재 전략을 적용한 시뮬레이션 결과입니다. 감성 점수는 몬테카를로 시뮬레이션으로 생성됩니다.")
+
+@st.cache_data(ttl=3600)
+def run_cached_backtest():
+    """백테스트 결과를 1시간 캐싱하여 대시보드 로딩 속도를 개선합니다."""
+    engine = BacktestEngine(Settings())
+    return engine.run(ticker="TSLA", start_date="2023-01-01", end_date="2025-12-31", initial_capital=10000.0)
+
+with st.spinner("백테스트 실행 중... (첫 로딩 시 약 30초 소요)"):
+    bt_result = run_cached_backtest()
+
+if bt_result:
+    metrics = bt_result['metrics']
+
+    # 리스크 지표 메트릭 카드
+    b1, b2, b3, b4, b5, b6 = st.columns(6)
+    b1.metric("CAGR", f"{metrics['cagr']:.1%}")
+    b2.metric("MDD", f"{metrics['mdd']:.1%}")
+    b3.metric("Sharpe Ratio", f"{metrics['sharpe']:.2f}")
+    b4.metric("승률", f"{metrics['win_rate']:.0%}")
+    b5.metric("손익비", f"{metrics['profit_factor']:.2f}" if metrics['profit_factor'] != float('inf') else "∞")
+    b6.metric("총 거래", f"{metrics['total_trades']}건")
+
+    if metrics.get('alpha') is not None:
+        st.info(f"벤치마크(S&P500) 대비 Alpha: **{metrics['alpha']:+.2%}**")
+
+    # 에쿼티 커브 차트
+    fig_bt = go.Figure()
+    dates = bt_result.get('dates', list(range(len(bt_result['equity_curve']))))
+
+    fig_bt.add_trace(go.Scatter(
+        x=dates, y=bt_result['equity_curve'],
+        mode='lines', name='전략 포트폴리오',
+        line=dict(color='#1E90FF', width=2)
+    ))
+
+    if bt_result.get('benchmark_curve') is not None:
+        bench_dates = dates[:len(bt_result['benchmark_curve'])]
+        fig_bt.add_trace(go.Scatter(
+            x=bench_dates, y=bt_result['benchmark_curve'],
+            mode='lines', name='S&P500 (벤치마크)',
+            line=dict(color='#FF6347', width=1.5, dash='dash')
+        ))
+
+    fig_bt.update_layout(
+        template='plotly_white',
+        xaxis_title='Date', yaxis_title='Portfolio Value (USD)',
+        hovermode="x unified",
+        legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
+    )
+    st.plotly_chart(fig_bt, width='stretch')
+else:
+    st.warning("백테스트 데이터를 로딩할 수 없습니다.")
+

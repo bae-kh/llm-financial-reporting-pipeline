@@ -1,6 +1,6 @@
 ## 코드 작성 규칙 (INSTRUCTIONS)
 
-이 규칙은 NLP 하이브리드 퀀트 트레이딩 시스템의 코드 작성 시 반드시 지켜야 할 가이드라인입니다.
+이 규칙은 Financial Data Intelligence Pipeline의 코드 작성 시 반드시 지켜야 할 가이드라인입니다.
 
 1. **사용 기술**: Python 3.10 이상을 사용하며, 한국투자증권(KIS) REST API를 통해 해외 주식 주문을 실행합니다. 주가 데이터는 `yfinance`, 기술적 지표는 `ta` 라이브러리를 사용합니다.
 

@@ -1,68 +1,72 @@
-# 📈 NLP 기반 하이브리드 자동 매매 퀀트 시스템
+# 📈 Financial Data Intelligence Pipeline
+### LLM 기반 시장 데이터 분석 및 리포트 자동화 시스템
 
 ![Python](https://img.shields.io/badge/Python-3.10%2B-blue)
 ![AWS EC2](https://img.shields.io/badge/AWS-EC2-FF9900?logo=amazonaws)
-![Streamlit](https://img.shields.io/badge/Streamlit-UI-FF4B4B?logo=streamlit)
+![Streamlit](https://img.shields.io/badge/Streamlit-Dashboard-FF4B4B?logo=streamlit)
 ![SQLite](https://img.shields.io/badge/SQLite-Database-003B57?logo=sqlite)
-![Ollama](https://img.shields.io/badge/Ollama-Llama--3-white)
-![pytest](https://img.shields.io/badge/pytest-32_passed-brightgreen)
+![pytest](https://img.shields.io/badge/pytest-54_passed-brightgreen)
 
-자연어 처리(NLP) 기반의 뉴스 감성 분석과 정량적 기술 지표(RSI, MACD)를 결합한 **하이브리드 퀀트 트레이딩 시스템**입니다. 단순한 백테스트 스크립트를 넘어, AWS EC2 클라우드 환경에서 무중단으로 동작하며 증권사 API 실거래 체결, 트랜잭션 로깅, 웹 대시보드 시각화, 모바일 모니터링 알림 체계를 모두 갖춘 Full-Stack MLOps 파이프라인입니다.
-
----
-
-## 📊 실시간 퀀트 대시보드 (Live Dashboard)
-
-*(시스템이 24시간 백그라운드로 수집한 매매 타점과 수익률을 시각화합니다.)*
-<img width="1516" height="1050" alt="13 125 4 221_8501_" src="https://github.com/user-attachments/assets/15314bc4-5ff5-43c7-b9c3-80b68f525fb5" />
-
-
-> **Tip:** 대시보드는 현재 AWS EC2 서버에서 24시간 가동 중입니다. (보안상의 이유로 퍼블릭 접근은 제한적일 수 있습니다.)
+금융 시계열 데이터를 수집·분석하고, 정량 규칙 기반 전략의 성과를 백테스트한 뒤, LLM을 활용해 리스크 분석 리포트를 자동 생성하는 **Full-Stack 데이터 파이프라인**입니다.
 
 ---
 
-## 🏗 시스템 아키텍처 (Production Pipeline)
+## 📊 실시간 데이터 분석 대시보드 (Live Dashboard)
+
+*(시스템이 수집한 시계열 데이터와 백테스트 성과를 시각화합니다.)*
+<img width="1516" height="1050" alt="dashboard" src="https://github.com/user-attachments/assets/15314bc4-5ff5-43c7-b9c3-80b68f525fb5" />
+
+---
+
+## 🏗 시스템 아키텍처 (Data Pipeline)
 
 ```mermaid
 graph TD
     subgraph Cloud_AWS ["Cloud Infrastructure (AWS EC2)"]
         CRON[Linux Crontab<br>Scheduler]
-        AT[TradingEngine<br>auto_trade.py]
+        AT[DataPipeline<br>auto_trade.py]
         DB[(SQLite DB<br>quant_trade.db)]
         UI[Streamlit Dashboard<br>app.py]
     end
 
-    subgraph Modules ["Internal Modules"]
+    subgraph Analysis ["Analysis & Reporting"]
+        BT[BacktestEngine<br>backtest/engine.py]
+        RM[RiskMetrics<br>backtest/metrics.py]
+        RPT[LLM Reporter<br>report/llm_reporter.py]
+    end
+
+    subgraph Modules ["Data Processing Modules"]
         CFG[Settings<br>config/settings.py]
         NF[NewsFetcher<br>data_pipeline/news_fetcher.py]
         PF[PriceFetcher<br>data_pipeline/price_fetcher.py]
         SA[SentimentAnalyzer<br>nlp_engine/analyzer.py]
-        TG_MOD[TelegramNotifier<br>notifications/telegram.py]
         DBL[DBLogger<br>database/db_logger.py]
     end
 
-    subgraph External_API ["External Interfaces"]
+    subgraph External_API ["External Data Sources"]
         YF[yfinance API<br>Live Price]
-        LLM[Local LLM<br>Ollama: Llama-3]
-        KIS[Korea Investment API<br>Order Execution]
-        TG[Telegram API<br>Real-time Alerts]
+        LLM[OpenAI / Ollama<br>LLM Engine]
         RSS[Google News RSS<br>News Headlines]
     end
 
-    CRON -->|Daily Trigger 23:35| AT
+    CRON -->|Daily Trigger| AT
     CFG -->|Config Injection| AT
     AT --> NF
     AT --> PF
     AT --> SA
-    AT --> TG_MOD
     AT --> DBL
+
     NF -->|RSS Crawling| RSS
-    PF -->|Real-time Data| YF
-    SA <-->|Sentiment Analysis| LLM
-    AT -->|Order Routing| KIS
-    DBL -->|Transaction Logs| DB
-    TG_MOD -->|Status & Errors| TG
+    PF -->|시계열 데이터| YF
+    SA <-->|감성 분석| LLM
+
+    DBL -->|트랜잭션 로깅| DB
     DB -->|Data Query| UI
+
+    PF -->|과거 데이터| BT
+    BT -->|에쿼티 커브| RM
+    RM -->|지표 요약| RPT
+    RPT -->|마크다운 리포트| UI
 ```
 
 ---
@@ -70,88 +74,91 @@ graph TD
 ## 📁 프로젝트 구조
 
 ```
-aibitcoin-main/
+nlp-quant-trade/
 ├── config/
-│   ├── __init__.py
-│   └── settings.py          # 중앙 집중형 설정 허브 (환경 분기 + 전략 파라미터)
+│   └── settings.py              # 중앙 집중형 설정 허브 (환경 분기 + 전략 파라미터)
 ├── data_pipeline/
-│   ├── __init__.py
-│   ├── price_fetcher.py     # yfinance 주가 데이터 + RSI/MACD 기술적 지표
-│   └── news_fetcher.py      # Google News RSS 뉴스 크롤러
+│   ├── price_fetcher.py         # yfinance 시계열 데이터 + RSI/MACD 기술적 지표
+│   └── news_fetcher.py          # Google News RSS 뉴스 크롤러
 ├── nlp_engine/
-│   ├── __init__.py
-│   └── analyzer.py          # LLM 감성 분석 (OpenAI / Ollama 스위칭)
+│   └── analyzer.py              # LLM 감성 분석 (OpenAI / Ollama 스위칭)
 ├── database/
-│   ├── __init__.py
-│   └── db_logger.py         # SQLite 트랜잭션 로깅 (WAL 모드)
+│   └── db_logger.py             # SQLite 트랜잭션 로깅 (WAL 모드)
+├── backtest/
+│   ├── engine.py                # 이터레이티브 백테스트 (Look-ahead 편향 방어)
+│   └── metrics.py               # 리스크 지표 (CAGR, MDD, Sharpe, 승률, 손익비)
+├── report/
+│   └── llm_reporter.py          # LLM 기반 성과 리포트 자동 생성
 ├── notifications/
-│   ├── __init__.py
-│   └── telegram.py          # 텔레그램 실시간 알림
-├── tests/
-│   ├── conftest.py           # 테스트 공용 Fixture
-│   ├── test_analyzer.py      # LLM 파싱 방어 테스트 (10개)
-│   ├── test_decision_tree.py # 의사결정 경계값 테스트 (14개)
-│   ├── test_news_fetcher.py  # 뉴스 크롤링 실패 방어 테스트 (5개)
-│   └── test_db_logger.py     # DB 기록 무결성 테스트 (3개)
-├── auto_trade.py             # TradingEngine 클래스 (메인 파이프라인)
-├── app.py                    # Streamlit 대시보드
-├── .env.example              # 환경 변수 템플릿 (안전)
-├── requirements.txt
-├── SYSTEM_RULES.md           # 시스템 아키텍처 규칙
-└── INSTRUCTIONS.md           # 코드 작성 가이드라인
+│   └── telegram.py              # 텔레그램 실시간 알림
+├── tests/                       # 54개 단위 테스트
+│   ├── test_analyzer.py         # LLM 파싱 방어 (10개)
+│   ├── test_decision_tree.py    # 의사결정 경계값 (14개)
+│   ├── test_backtest.py         # 백테스트 & 리스크 지표 (22개)
+│   ├── test_news_fetcher.py     # 뉴스 크롤링 실패 방어 (5개)
+│   └── test_db_logger.py        # DB 무결성 (3개)
+├── auto_trade.py                # 데이터 수집 & 분석 파이프라인
+├── app.py                       # Streamlit 대시보드
+└── requirements.txt
 ```
 
 ---
 
-## 🚀 핵심 비즈니스 로직 및 특징
+## 🔬 핵심 기술 구현 사항
 
-### 1. 하이브리드 의사결정 엔진 (정성 + 정량)
-단순히 LLM의 텍스트 감성 점수에만 의존하지 않습니다. RSI(과매수/과매도)와 MACD(추세 모멘텀) 지표를 교차 검증하여, 뉴스가 아무리 호재여도 **차트가 과열 상태(RSI ≥ 70)이면 기계적으로 매수를 보류**해 고점 휩쏘(Whipsaw) 리스크를 수학적으로 통제합니다.
+### 1. 하이브리드 시그널 엔진 (정성 + 정량)
+LLM의 텍스트 감성 점수에만 의존하지 않고, RSI(과매수/과매도)와 MACD(추세 모멘텀) 지표를 교차 검증합니다. 뉴스가 호재라도 차트가 과열 상태(RSI ≥ 70)이면 기계적으로 시그널을 보류하여 거짓 신호(Whipsaw) 리스크를 수학적으로 통제합니다.
 
-### 2. 수익률 기반 기계적 리스크 관리 (Stop-Loss / Take-Profit)
-증권사 API를 통해 실시간 매입 평균 단가를 파싱합니다. 감정이나 외부 노이즈를 철저히 배제하고 설정된 하드 스톱로스(-5%)와 테이크 프로핏(+15%) 로직을 매수 트리거보다 최우선으로 실행하여 **포트폴리오의 최대 낙폭(MDD)을 강제 방어**합니다.
+### 2. 리스크 지표 기반 성과 분석
+단순 수익률이 아닌 검증된 정량 지표로 전략을 평가합니다:
+- **CAGR**: 연평균 복리 수익률
+- **MDD**: 최대 낙폭 — 포트폴리오 꼬리 위험(Tail Risk) 정량화
+- **Sharpe Ratio**: 위험 대비 수익률 — 변동성 보정 후 성과 측정
+- **벤치마크 Alpha**: S&P500 대비 초과 수익 검증
 
-### 3. MLOps 기반 실시간 모니터링 (Telegram)
-서버에 접속하지 않아도 시스템 가동 상태, AI 판단 근거, 매수/매도 체결 영수증 및 치명적 에러 로그가 텔레그램 봇 API를 통해 관리자의 스마트폰으로 즉각 푸시(Push)되는 무인화 운영 체계를 구축했습니다.
+### 3. Look-ahead 편향 방어 백테스트
+이터레이티브 순회(`df.iloc[:i+1]`)를 사용하여 각 시점에서 미래 데이터 접근을 구조적으로 차단합니다. 감성 점수는 몬테카를로 시뮬레이션(정규분포 N(0.1, 0.3))으로 생성하여 LLM API 호출 비용을 절감하면서도 전략 로직을 검증합니다.
 
-### 4. 32개 단위 테스트 (pytest)
-LLM 응답 파싱 방어, 의사결정 경계값 검증, 뉴스 크롤링 실패 방어, DB 기록 무결성 등 핵심 리스크 지점을 32개 테스트 케이스로 커버합니다. `pytest tests/ -v`로 전체 테스트를 실행할 수 있습니다.
+### 4. LLM 기반 분석 리포트 자동화
+LLM이 직접 매매 판단을 하지 않고, **정량 백테스트 결과를 사람이 이해하기 쉬운 리포트로 요약**하는 역할만 수행합니다. 3중 방어막(JSON 모드 강제 + 파싱 예외 처리 + Pydantic 범위 검증)으로 LLM 응답의 비결정적 붕괴를 방어합니다.
 
----
+### 5. 54개 단위 테스트 (pytest)
+LLM 응답 파싱 방어, 의사결정 경계값, 리스크 지표 수학적 정확성, 뉴스 크롤링 실패 방어, DB 무결성 등 핵심 리스크 지점을 54개 테스트 케이스로 커버합니다.
 
-## 🛠 트러블슈팅 및 아키텍처 리팩토링 (Troubleshooting)
-
-이 프로젝트를 단순한 스크립트에서 상용화 수준(Production-Level)으로 고도화하며 맞닥뜨린 난제들과 엔지니어링 해결 과정입니다.
-
-### 1. 단일 시그널의 한계 극복 및 하이브리드 엔진 도입 (Whipsaw 방어)
-- **Problem**: 초기 버전은 LLM의 뉴스 감성 점수에만 의존하여, 홍보성 찌라시에 과민 반응하거나 거시적 경제 악화에 따른 나스닥 전체 하락장 등 '가격 행동(Price Action)'을 무시한 채 고점 매수를 시도하는 결함이 발견되었습니다.
-- **Solution**: 검증된 외부 금융 라이브러리(`ta`)를 도입해 아키텍처를 전면 리팩토링했습니다. **[뉴스 감성 + RSI + MACD]**가 모두 충족되어야만 매수하는 다중 조건부 의사결정 트리를 구축했습니다. 뉴스가 호재라도 차트가 과열 상태(RSI ≥ 70)면 매수를 기계적으로 보류하여 휩쏘(거짓 신호) 리스크를 수학적으로 통제했습니다.
-
-### 2. 평균 단가 추적 및 꼬리 위험(Tail Risk) 차단 로직 구현
-- **Problem**: 특정 종목에 악재 뉴스가 명시적으로 보도되지 않는 한, 계좌 수익률이 반토막이 나도 매도를 하지 못하는 심각한 방치형 리스크가 존재했습니다.
-- **Solution**: 한국투자증권 API 응답에서 '매입 평균 단가'를 파싱하여 실시간 수익률(ROI)을 추적하는 모듈을 개발했습니다. 감정이나 외부 노이즈를 철저히 배제하고 설정된 하드 스톱로스(-5%)와 테이크 프로핏(+15%) 로직을 매수 트리거보다 최우선으로 실행하여 포트폴리오의 **최대 낙폭(MDD)을 강제로 방어**했습니다.
-
-### 3. 로컬 LLM의 비결정적 JSON 붕괴 방어 (Fault Tolerance)
-- **Problem**: GPT-4와 달리 로컬 오픈소스 모델(Llama-3)은 프롬프트 지시를 가끔 무시하고 `{"score": 0.5}` 대신 "Here is the result..."와 같은 불필요한 텍스트를 뱉어내어 파이프라인 전체를 `JSONDecodeError`로 마비시켰습니다.
-- **Solution**: 3중 방어막을 구축했습니다. (1) `response_format={"type": "json_object"}` 강제, (2) `json.loads` + `try-except JSONDecodeError`로 파싱 실패 시 중립값(0.0) 대체, (3) Pydantic 모델(`SentimentResult`)로 `-1.0~1.0` 범위 강력 검증. 이 방어 로직은 `tests/test_analyzer.py`의 10개 단위 테스트로 검증됩니다.
-
-### 4. 시계열 데이터 결측치(NaN) 정합성 유지 전략
-- **Problem**: 주말 등 휴장일이나 통신 지연으로 인해 API 호출 시 주가 데이터에 결측치가 발생하면, 전체 파이프라인이나 대시보드의 데이터 프레임이 어긋나는 현상이 발생했습니다.
-- **Solution**: 결측치를 단순히 제거(`dropna`)해버리면 시계열 연속성이 깨져 이동평균 지표 산출에 오류가 생깁니다. 따라서 직전의 유효한 체결가를 현재 가격으로 인식하는 시장 특성을 반영하여 **Forward Fill (`ffill()`)** 방식으로 전처리 파이프라인을 구축, Look-ahead 편향(Bias)과 시계열 왜곡을 동시에 방어했습니다.
-
-### 5. 프론트-백엔드 간 스키마 불일치 연쇄 장애 차단 (Defensive Programming)
-- **Problem**: 백엔드 증권사 API 연동 전략 수정으로 반환되는 데이터 형식(Columns)이 변동될 때마다, 이를 읽어오는 프론트엔드 대시보드가 `KeyError`를 뱉으며 하얗게 크래시 되었습니다.
-- **Solution**: 데이터 결측이나 형식 불일치 시 시스템이 죽지 않고 유연하게 대처하도록 데이터 프레임의 컬럼 교집합을 먼저 추출(`[col for col in target_cols if col in df.columns]`)하고, 타입 검사 및 예외 처리를 수행하는 **방어적 프로그래밍(Defensive Programming)**을 엄격하게 적용하여 모듈 간 강한 결합을 풀어냈습니다.
-
-### 6. God Function → OOP 클래스 리팩토링
-- **Problem**: 초기 `auto_trade.py`의 `run_daily_pipeline()` 함수가 140줄짜리 단일 함수로, 인증부터 주문까지 모든 로직이 혼재되어 단위 테스트와 유지보수가 불가능했습니다.
-- **Solution**: `TradingEngine` 클래스로 전면 리팩토링하여 인증(`_authenticate`), 잔고 조회(`_fetch_balance`), 주문 실행(`_execute_order`), 의사결정(`evaluate_sell_signal`, `evaluate_buy_signal`) 각각을 독립 메서드로 분리했습니다. 매수/매도 주문 함수의 95% 코드 중복도 `_execute_order`로 통합하여 제거했습니다.
+```bash
+pytest tests/ -v
+# 54 passed ✅
+```
 
 ---
 
-## ⚙️ 인프라 배포 명세서 (Deployment)
+## 🛠 트러블슈팅 (Engineering Challenges)
 
-1. **Repository Clone & Virtual Environment**
+### 1. 단일 시그널의 한계 극복 (Whipsaw 방어)
+- **문제**: LLM 감성 점수만으로는 홍보성 기사에 과민 반응하여 고점 매수를 시도하는 결함 발생
+- **해결**: `[NLP 감성 + RSI + MACD]` 다중 조건부 의사결정 트리를 구축하여 거짓 신호를 수학적으로 통제
+
+### 2. 로컬 LLM의 비결정적 JSON 붕괴 방어
+- **문제**: Llama-3가 프롬프트 지시를 무시하고 비정형 텍스트를 반환하여 파이프라인 전체가 `JSONDecodeError`로 마비
+- **해결**: 3중 방어막 구축 — (1) `response_format={"type": "json_object"}` 강제, (2) `json.loads` + `try-except` 파싱 실패 시 중립값 대체, (3) `Pydantic` 모델로 -1.0~1.0 범위 강력 검증
+
+### 3. 시계열 데이터 결측치 정합성 유지
+- **문제**: 휴장일/통신 지연으로 주가 데이터에 NaN 발생 → 이동평균 지표 산출 오류
+- **해결**: Forward Fill(`ffill()`) 방식으로 직전 유효 체결가를 현재 가격으로 인식하는 시장 특성을 반영, Look-ahead 편향과 시계열 왜곡을 동시 방어
+
+### 4. 프론트-백엔드 스키마 불일치 방어
+- **문제**: 데이터 형식 변동 시 대시보드가 `KeyError`로 크래시
+- **해결**: 컬럼 교집합 추출(`[col for col in target_cols if col in df.columns]`)로 방어적 프로그래밍 적용
+
+### 5. 아키텍처 리팩토링 (God Function → OOP)
+- **문제**: 140줄 단일 함수에 인증~분석~기록이 혼재되어 단위 테스트 및 유지보수 불가능
+- **해결**: `TradingEngine` OOP 클래스로 전면 리팩토링, 매수/매도 95% 코드 중복을 `_execute_order()`로 통합 제거
+
+---
+
+## 🚀 배포 명세서 (Deployment)
+
+### 1. Clone & Environment Setup
 ```bash
 git clone https://github.com/bae-kh/nlp-quant-trade.git
 cd nlp-quant-trade
@@ -160,40 +167,25 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-2. **환경 변수 설정**
+### 2. 환경 변수 설정
 ```bash
 cp .env.example .env
-# .env 파일을 열어 실제 API 키를 입력합니다.
-# KIS_ENVIRONMENT="virtual" (모의투자) 또는 "production" (실전)
+nano .env    # 실제 API 키 입력
 ```
 
-3. **테스트 실행**
+### 3. 테스트 실행
 ```bash
-pytest tests/ -v
-# 32 passed ✅
+pytest tests/ -v    # 54 passed ✅
 ```
 
-4. **Local LLM Init (Ollama & Swap Memory Allocation)**
+### 4. 대시보드 서빙
 ```bash
-# OOM 방지를 위한 Swap 설정 필수
-sudo fallocate -l 4G /swapfile
-sudo chmod 600 /swapfile
-sudo mkswap /swapfile
-sudo swapon /swapfile
-
-curl -fsSL https://ollama.com/install.sh | sh
-ollama pull llama3
-```
-
-5. **Background Dashboard Serving**
-```bash
-# AWS 보안 그룹 8501 포트 개방 필요
 nohup streamlit run app.py --server.port 8501 --server.address 0.0.0.0 &
 ```
 
-6. **Batch Scheduler Config (Crontab)**
+### 5. 배치 스케줄러 (Crontab)
 ```bash
 crontab -e
-# KST 23:35 (미국장 개장 후 변동성 안정화 시점) 데일리 트리거
-# 35 23 * * 1-5 cd /home/ubuntu/nlp-quant-trade && /home/ubuntu/nlp-quant-trade/venv/bin/python auto_trade.py >> cron_execution.log 2>&1
+# 매일 23:35 (KST) 자동 실행
+35 23 * * 1-5 cd /home/ubuntu/nlp-quant-trade && /home/ubuntu/nlp-quant-trade/venv/bin/python auto_trade.py >> cron_execution.log 2>&1
 ```
