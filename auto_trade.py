@@ -1,6 +1,11 @@
 # file path: auto_trade.py
 """
-NLP 하이브리드 퀀트 트레이딩 엔진 — 일일 자동 매매 파이프라인
+금융 데이터 수집 및 rule-based 시그널 시뮬레이션 파이프라인
+
+[포트폴리오 노트]
+- 이 모듈은 데이터 수집, 감성 분석, rule-based 시그널 평가, 리포트 데이터 수집을 담당합니다.
+- KIS API 주문 실행은 Optional / Paper Execution 영역이며, 이 포트폴리오의 핵심 기능이 아닙니다.
+- 실주문(production)을 실행하려면 .env에서 KIS_ENVIRONMENT="production"을 명시적으로 설정해야 합니다.
 
 실행 전 필수 요건: pip install -r requirements.txt
 """
@@ -48,12 +53,13 @@ def retry_with_backoff(max_retries: int = 3, base_delay: float = 1.0):
 
 class TradingEngine:
     """
-    KIS 증권사 API를 통한 자동 매매 엔진입니다.
+    금융 데이터 수집 + rule-based 시그널 시뮬레이션 + Optional paper/mock execution 엔진.
 
     [아키텍처 원칙]
     - 모든 매직 넘버는 Settings 클래스에서 주입받아 하드코딩을 완전히 제거했습니다.
     - 매수/매도 로직을 메서드로 분리하여 단위 테스트가 가능한 구조입니다.
     - 인증 → 잔고 조회 → 데이터 수집 → 분석 → 의사결정 → 실행의 단방향 파이프라인을 따릅니다.
+    - KIS API 주문 실행은 optional/paper execution 영역이며, 실주문은 KIS_ENVIRONMENT="production" 명시 설정 시에만 활성화됩니다.
     """
 
     def __init__(self, settings: Settings):
@@ -238,10 +244,16 @@ class TradingEngine:
 
     def run(self):
         """
-        일일 자동 매매 파이프라인의 메인 오케스트레이터입니다.
-        인증 → 잔고 조회 → 데이터 수집 → NLP 분석 → 의사결정 → 주문 실행 순서로 진행합니다.
+        데이터 수집 + rule-based 시그널 평가 파이프라인의 메인 오케스트레이터입니다.
+
+        인증 → 잔고 조회 → 데이터 수집 → NLP 분석 → 의사결정 → 선택적 주문 실행 순서로 진행합니다.
+
+        [KIS API 주문 실행]
+        - Optional / paper execution 영역입니다.
+        - KIS_ENVIRONMENT="virtual" (default) 시 모의투자 모드로 동작합니다.
+        - 이 포트폴리오의 핵심은 live trading이 아니라 데이터 수집, 감성 분석, 리포트 생성 workflow입니다.
         """
-        logger.info("=== 일일 자동 매매 파이프라인 시작 ===")
+        logger.info("=== 데이터 수집 파이프라인 시작 ===")
         ticker = self.settings.TARGET_TICKER
 
         try:
@@ -282,7 +294,10 @@ class TradingEngine:
             logger.info(f"{ticker} 최신가: ${current_price:.2f} | RSI(14): {rsi_14:.2f} | MACD_diff: {macd_diff:.4f}")
 
             self.notifier.send(
-                f"[시작] {ticker} 퀀트봇 가동\n가용 예수금: ${target_usd:.2f}\n현재 보유량: {holding_qty}주\n현재 수익률: {roi:.2f}%"
+                f"[파이프라인 시작] {ticker} 데이터 수집 시작\n"
+                f"조회 대상 예수금: ${target_usd:.2f}\n"
+                f"현재 보유량: {holding_qty}주\n"
+                f"현재 수익률: {roi:.2f}%  [리포트용 데이터]"
             )
 
             # Step 4: 실시간 뉴스 크롤링

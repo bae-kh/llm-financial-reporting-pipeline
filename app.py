@@ -1,9 +1,15 @@
 # file path: app.py
 """
-NLP 하이브리드 퀀트 트레이딩 대시보드
+LLM 기반 금융 데이터 리포팅 대시보드
+
+금융 시계열 데이터, 뉴스 감성 분석, 백테스트 지표를 수집·구조화하고
+Markdown 리포트로 생성하는 리포팅 파이프라인의 시각화 인터페이스입니다.
 
 실행 전 필수 요건: pip install streamlit plotly pandas yfinance
 실행 방법: streamlit run app.py --server.port 8501
+
+⚠️ 면책 조항: 이 대시보드는 투자 자문을 제공하지 않습니다.
+   백테스트 결과는 과거 시뮬레이션이며 미래 수익을 보장하지 않습니다.
 """
 import streamlit as st
 import sqlite3
@@ -55,8 +61,13 @@ def load_price_data(ticker="TSLA", days=30):
     return df
 
 
-st.title("📈 NLP 하이브리드 퀀트 트레이딩 대시보드")
-st.markdown("자연어 감성 분석(LLM)과 기술적 지표(RSI, MACD)가 결합된 자율주행 매매 시스템의 실시간 현황입니다.")
+st.title("📊 LLM 기반 금융 데이터 리포팅 대시보드")
+st.markdown(
+    "금융 시계열 데이터, 뉴스 감성 분석, 백테스트 지표를 수집·구조화하고 "
+    "Markdown 리포트로 생성하는 **리포팅 파이프라인**입니다.  \n"
+    "> ⚠️ 이 대시보드는 투자 자문을 제공하지 않습니다. "
+    "백테스트 결과는 과거 시뮬레이션이며 미래 수익을 보장하지 않습니다."
+)
 
 # 환경 표시 뱃지
 env_label = "🟢 실전" if settings.KIS_ENVIRONMENT == "production" else "🟡 모의투자"
@@ -167,8 +178,12 @@ else:
 # 5. 백테스트 성과 분석 섹션
 # ============================================================
 st.divider()
-st.subheader("📊 백테스트 성과 분석 (2023~2025)")
-st.caption("과거 데이터에 현재 전략을 적용한 시뮬레이션 결과입니다. 감성 점수는 몬테카를로 시뮬레이션으로 생성됩니다.")
+st.subheader("📊 백테스트 시뮬레이션 결과 (2023~2025)")
+st.caption(
+    "과거 데이터에 rule-based 시그널 조건을 적용한 시뮬레이션 결과입니다. "
+    "감성 점수는 몬테카를로 시뮬레이션으로 생성됩니다. "
+    "⚠️ 이 수치는 과거 시뮬레이션이며 미래 수익을 보장하지 않습니다."
+)
 
 @st.cache_data(ttl=3600)
 def run_cached_backtest():
