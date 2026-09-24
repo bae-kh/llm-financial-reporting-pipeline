@@ -1267,6 +1267,12 @@ Rules:
                 f"{len(result.unsafe_instruction_items)}건을 LLM 입력과 근거에서 "
                 "제외했습니다."
             )
+        if result.low_information_page_items:
+            warnings.append(
+                f"명백한 비뉴스형 페이지 "
+                f"{len(result.low_information_page_items)}건을 LLM 입력에서 "
+                "제외했습니다."
+            )
         return tuple(warnings)
 
     @staticmethod

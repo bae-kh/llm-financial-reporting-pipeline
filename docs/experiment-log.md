@@ -305,5 +305,7 @@ Case 5의 `수요 증가에 맞춰/따라`는 이 제목에서 허용했지만, 
 
 - [Evaluation v2 설계](evaluation_v2.md)
 - [실패 처리와 재작성 계약](failure-handling.md)
+- [MSFT Live E2E 뉴스 근거 품질 감사](msft-e2e-quality-audit.md) — `run_20260924T085316_392408Z_MSFT_67842779`, Prompt v3 + Validator v2, AI 보조 판정 초안
+- [MSFT 저정보성 페이지 필터 후속 개선](msft-e2e-low-information-filter-followup.md) — 저장 Snapshot 기준 `254→237`, 기존 선택 60건 중 비뉴스형 페이지 3건 교체, Live 재실행 없음
 - v1/v2 사람 판정 원본: `reports/generated/evals/v2/evalv2_20260923T073211Z_b6941567_vs_evalv2_20260923T082028Z_bf085cc6_reviewer_annotation.json`
 - v1/v2 판정 정책: `reports/generated/evals/v2/evalv2_20260923T073211Z_b6941567_vs_evalv2_20260923T082028Z_bf085cc6_human_review_policy.md`

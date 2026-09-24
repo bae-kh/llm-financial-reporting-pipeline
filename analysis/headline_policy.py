@@ -17,6 +17,11 @@ VehicleEventConcept = Literal[
     "vehicle_recall",
 ]
 VehicleEventRole = Literal["source", "output"]
+LowInformationPageKind = Literal[
+    "option_contract_listing",
+    "option_contract_community",
+    "stock_market_data_page",
+]
 
 
 @dataclass(frozen=True)
@@ -26,6 +31,7 @@ class HeadlineFilterResult:
     eligible_items: tuple[NewsItem, ...]
     irrelevant_items: tuple[NewsItem, ...]
     unsafe_instruction_items: tuple[NewsItem, ...]
+    low_information_page_items: tuple[NewsItem, ...] = ()
 
 
 class HeadlinePolicy:
@@ -62,6 +68,47 @@ class HeadlinePolicy:
             r"\b(?:buy|sell)\b",
             r"(?:이전|위의|앞선).{0,12}(?:지시|명령|프롬프트).{0,12}무시",
             r"(?:시스템|개발자).{0,8}(?:프롬프트|메시지)",
+        )
+    )
+
+    # 기사처럼 보이는 분석 제목과 단어 하나만으로 구분하지 않고, 포털의
+    # 고정형 문서 제목 전체가 일치할 때만 제외한다. 원본 Snapshot은 유지하고
+    # LLM 입력 직전 단계에서만 적용한다.
+    LOW_INFORMATION_PAGE_PATTERNS: tuple[
+        tuple[LowInformationPageKind, re.Pattern[str]], ...
+    ] = tuple(
+        (kind, re.compile(pattern, re.IGNORECASE))
+        for kind, pattern in (
+            (
+                "option_contract_listing",
+                r"^\s*[A-Z.]{1,10}\s+\d{6}\s+\d+(?:\.\d+)?[CP]\s+"
+                r"\([A-Z0-9.]+\)\s+Stock\s+Options?\s+Chain"
+                r"(?:\s*\|\s*(?:Quotes?|News|Data)"
+                r"(?:\s*&\s*(?:Quotes?|News|Data))*)?"
+                r"(?:\s*-\s*.+)?\s*$",
+            ),
+            (
+                "option_contract_community",
+                r"^\s*[A-Z.]{1,10}\s+\d{6}\s+\d+(?:\.\d+)?[CP]\s+"
+                r"\([A-Z0-9.]+\)\s+Stock\s+Community\s*&\s*Discussion"
+                r"(?:\s*-\s*.+)?\s*$",
+            ),
+            (
+                "stock_market_data_page",
+                r"^\s*[\w&.,'’ -]{1,100}\s+\([A-Z.]{1,10}\)\s+"
+                r"Stock\s+Chart(?:\s*-\s*.+)?\s*$",
+            ),
+            (
+                "stock_market_data_page",
+                r"^\s*[\w&.,'’ -]{1,100}\s+\([A-Z.]{1,10}\)\s+"
+                r"Stock\s+Price,\s*Quote,\s*News\s*&\s*History"
+                r"(?:\s*-\s*.+)?\s*$",
+            ),
+            (
+                "stock_market_data_page",
+                r"^\s*[A-Z.]{1,10}\s+Real[- ]Time\s+Stock\s+Quote"
+                r"(?:\s*-\s*.+)?\s*$",
+            ),
         )
     )
 
@@ -259,21 +306,25 @@ class HeadlinePolicy:
         *,
         ticker: str,
     ) -> HeadlineFilterResult:
-        """명령형 문자열을 먼저 제외한 뒤 종목 관련성을 확인합니다."""
+        """안전성·관련성 확인 후 명백한 비뉴스형 페이지만 제외합니다."""
         eligible: list[NewsItem] = []
         irrelevant: list[NewsItem] = []
         unsafe: list[NewsItem] = []
+        low_information: list[NewsItem] = []
         for item in items:
             if self.contains_instruction_pattern(f"{item.title}\n{item.source}"):
                 unsafe.append(item)
-            elif self.is_ticker_relevant(item.title, ticker=ticker):
-                eligible.append(item)
-            else:
+            elif not self.is_ticker_relevant(item.title, ticker=ticker):
                 irrelevant.append(item)
+            elif self.low_information_page_kind(item.title) is not None:
+                low_information.append(item)
+            else:
+                eligible.append(item)
         return HeadlineFilterResult(
             eligible_items=tuple(eligible),
             irrelevant_items=tuple(irrelevant),
             unsafe_instruction_items=tuple(unsafe),
+            low_information_page_items=tuple(low_information),
         )
 
     def is_ticker_relevant(self, title: str, *, ticker: str) -> bool:
@@ -287,6 +338,18 @@ class HeadlinePolicy:
     def contains_instruction_pattern(cls, text: str) -> bool:
         normalized = unicodedata.normalize("NFKC", text)
         return any(pattern.search(normalized) for pattern in cls.INSTRUCTION_PATTERNS)
+
+    @classmethod
+    def low_information_page_kind(
+        cls,
+        title: str,
+    ) -> LowInformationPageKind | None:
+        """고정형 제목으로 명백히 식별되는 비뉴스형 페이지 종류를 반환합니다."""
+        normalized = unicodedata.normalize("NFKC", title).strip()
+        for kind, pattern in cls.LOW_INFORMATION_PAGE_PATTERNS:
+            if pattern.fullmatch(normalized):
+                return kind
+        return None
 
     @classmethod
     def article_direction_hint(cls, title: str) -> DirectionHint:

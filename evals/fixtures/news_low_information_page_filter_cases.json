@@ -1,0 +1,84 @@
+{
+  "schema_version": "1.0",
+  "description": "Generalized headline-only cases for conservative non-news page filtering.",
+  "cases": [
+    {
+      "case_id": "block_msft_option_chain_listing",
+      "title": "MSFT 260911 385.00C (MSFT260911C385000) Stock Options Chain | Quotes & News - moomoo.com",
+      "expected_blocked": true,
+      "expected_kind": "option_contract_listing"
+    },
+    {
+      "case_id": "block_aapl_option_chain_listing",
+      "title": "AAPL 270115 200.00C (AAPL270115C200000) Stock Options Chain | Quotes & News - Market Portal",
+      "expected_blocked": true,
+      "expected_kind": "option_contract_listing"
+    },
+    {
+      "case_id": "block_nvda_option_contract_community",
+      "title": "NVDA 270115 150.00P (NVDA270115P150000) Stock Community & Discussion - Brokerage Portal",
+      "expected_blocked": true,
+      "expected_kind": "option_contract_community"
+    },
+    {
+      "case_id": "block_company_stock_chart_page",
+      "title": "ALPHABET INC (GOOGL) Stock Chart - ChartMill",
+      "expected_blocked": true,
+      "expected_kind": "stock_market_data_page"
+    },
+    {
+      "case_id": "block_company_quote_history_page",
+      "title": "Apple Inc. (AAPL) Stock Price, Quote, News & History - Nasdaq",
+      "expected_blocked": true,
+      "expected_kind": "stock_market_data_page"
+    },
+    {
+      "case_id": "block_ticker_realtime_quote_page",
+      "title": "TSLA Real-Time Stock Quote - Example Markets",
+      "expected_blocked": true,
+      "expected_kind": "stock_market_data_page"
+    },
+    {
+      "case_id": "allow_options_market_event_article",
+      "title": "Tesla options activity surges after quarterly earnings",
+      "expected_blocked": false,
+      "expected_kind": null
+    },
+    {
+      "case_id": "allow_options_chain_analysis_article",
+      "title": "Nvidia options chain signals unusual demand after guidance",
+      "expected_blocked": false,
+      "expected_kind": null
+    },
+    {
+      "case_id": "allow_options_strategy_article",
+      "title": "After a Microsoft stock price spike, an options strategy aims for a robust profit",
+      "expected_blocked": false,
+      "expected_kind": null
+    },
+    {
+      "case_id": "allow_chart_analysis_article",
+      "title": "Apple stock chart analysis points to support after product launch",
+      "expected_blocked": false,
+      "expected_kind": null
+    },
+    {
+      "case_id": "allow_price_movement_article",
+      "title": "Microsoft stock price jumps after cloud earnings beat estimates",
+      "expected_blocked": false,
+      "expected_kind": null
+    },
+    {
+      "case_id": "allow_community_business_event_article",
+      "title": "Amazon expands community solar program near new data center",
+      "expected_blocked": false,
+      "expected_kind": null
+    },
+    {
+      "case_id": "allow_realtime_business_metric_article",
+      "title": "Meta shares rise as real-time ad pricing improves",
+      "expected_blocked": false,
+      "expected_kind": null
+    }
+  ]
+}
