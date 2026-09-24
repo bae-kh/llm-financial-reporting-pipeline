@@ -95,6 +95,22 @@ def neutral_delivery_output(article_id: str) -> NewsLLMOutput:
     )
 
 
+def negative_recall_output(article_id: str) -> NewsLLMOutput:
+    return NewsLLMOutput(
+        sentiment="negative",
+        score=-0.5,
+        confidence=80,
+        summary="테슬라 차량의 안전 문제로 리콜이 발표됐습니다.",
+        key_topics=(
+            TopicEvidence(
+                topic="차량 안전 리콜",
+                explanation="문 안전 문제와 관련된 차량 리콜 보도입니다.",
+                supporting_article_ids=(article_id,),
+            ),
+        ),
+    )
+
+
 def test_filter_removes_irrelevant_and_instruction_like_headlines():
     relevant = make_item(1, "Tesla reports quarterly vehicle deliveries")
     irrelevant = make_item(2, "Intel stock falls after earnings warning")
@@ -150,6 +166,42 @@ def test_analyzer_sends_only_relevant_safe_headlines_to_llm():
     assert injection.title not in prompt
     assert '"eligible_article_count":1' in prompt
     assert '"direction_hint":"neutral"' in prompt
+
+
+def test_unrelated_news_does_not_receive_vehicle_delivery_translation_examples():
+    recall = make_item(1, "Tesla announces vehicle recall over door safety")
+    client = StubClient(negative_recall_output(recall.article_id))
+
+    result = asyncio.run(NewsAnalyzer(client=client).analyze(make_news((recall,))))
+
+    assert result.available is True
+    system_prompt = client.responses.calls[0]["input"][0]["content"]
+    assert "차량 인도량" not in system_prompt
+    assert "차량 인도량 보고서" not in system_prompt
+    assert "vehicle recalls" in system_prompt
+    assert "vehicle deliveries" in system_prompt
+
+    delivery_site_prompt = NewsAnalyzer._system_instructions(
+        (make_item(2, "Tesla opens more delivery sites in Japan"),)
+    )
+    assert "차량 인도량" not in delivery_site_prompt
+    assert "Context-specific translation rule:" not in delivery_site_prompt
+
+
+def test_vehicle_delivery_news_receives_context_specific_translation_rule():
+    delivery = make_item(1, "Tesla reports quarterly vehicle deliveries")
+    client = StubClient(neutral_delivery_output(delivery.article_id))
+
+    result = asyncio.run(
+        NewsAnalyzer(client=client).analyze(make_news((delivery,)))
+    )
+
+    assert result.available is True
+    system_prompt = client.responses.calls[0]["input"][0]["content"]
+    assert "Context-specific translation rule:" in system_prompt
+    assert "차량 인도/차량 인도량/차량 인도량 보고서" in system_prompt
+    assert "차량 리콜" in system_prompt
+    assert "expansion of delivery locations" in system_prompt
 
 
 def test_all_filtered_headlines_skip_llm_with_explicit_error():

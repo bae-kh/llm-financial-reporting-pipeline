@@ -1,0 +1,505 @@
+{
+  "schema_version": "2.0",
+  "dataset_id": "tsla-real-news-headlines-pilot",
+  "dataset_version": "2.0.0-draft.2",
+  "description": "실제 Google News RSS snapshot의 TSLA headline metadata로 작성한 5-case development pilot. 사람 검수와 승인을 받지 않은 draft이며 모델 성능 결과가 아니다.",
+  "dataset_kind": "real_news",
+  "split": "development",
+  "created_at": "2026-09-22T00:00:00+09:00",
+  "cases": [
+    {
+      "case_id": "tsla_real_positive_robotaxi_clearance",
+      "description": "라스베이거스 로보택시 출시 승인과 주가 상승을 함께 명시한 긍정 headline",
+      "split": "development",
+      "ticker": "TSLA",
+      "analysis_window": {
+        "start_date": "2026-08-21",
+        "end_date": "2026-08-21",
+        "timezone": "America/New_York"
+      },
+      "news_headlines": [
+        {
+          "article_id": "news_7fe6edf495148e62",
+          "title": "Tesla’s stock jumps as the company gets cleared for a Las Vegas robotaxi launch - MarketWatch",
+          "published_at": "2026-08-21T20:34:00Z",
+          "url": "https://news.google.com/rss/articles/CBMiqwFBVV95cUxPTU5MR2pXQlZoMDgzSWFXVEZsNEZpcEg1ei15RkNOQkpPaXRYLW8xbEswb1VQa0ZlWFNBcGQwamtuMEZ2dUgtUnp0RHllYWI2WnBTMjhDVVRCM05PUGhaZ25zNm9pdDRGOV95TzZ3bTdtUF9TY19BRVY1d2hJajNjT2taTW0wMjFDMmNGUGE4dEdaVmdjU050WkdnRkZWVmQycndBdi1VcW40c3M?oc=5",
+          "source": "MarketWatch"
+        }
+      ],
+      "data_source": {
+        "source_kind": "real_news",
+        "provider": "google_news_rss",
+        "retrieved_at": "2026-08-23T05:32:53.135912Z",
+        "snapshot_ref": "reports/generated/news_snapshots/news_TSLA_2026-07-25_2026-08-23_20260823T053253_135912Z.json",
+        "provenance_notes": "저장소의 실제 RSS snapshot에서 metadata를 그대로 복사했다. 기사 본문, 승인 기관의 범위, 후속 정정 여부는 확인하지 않았다.",
+        "license_notes": "기사 본문은 저장하지 않고 headline metadata와 Google News RSS URL만 사용한다."
+      },
+      "expectations": {
+        "expected_sentiments": [
+          "positive"
+        ],
+        "required_evidence_ids": [
+          "news_7fe6edf495148e62"
+        ],
+        "optional_evidence_ids": [],
+        "forbidden_evidence_ids": [],
+        "expected_claims": [
+          {
+            "claim_id": "tesla_stock_jumped",
+            "text": "제목은 테슬라 주가가 상승했다고 전한다.",
+            "supporting_article_ids": [
+              "news_7fe6edf495148e62"
+            ],
+            "importance": "core"
+          },
+          {
+            "claim_id": "las_vegas_robotaxi_launch_cleared",
+            "text": "제목은 테슬라가 라스베이거스 로보택시 출시를 위한 승인을 받았다고 전한다.",
+            "supporting_article_ids": [
+              "news_7fe6edf495148e62"
+            ],
+            "importance": "core"
+          }
+        ],
+        "forbidden_claims": [
+          {
+            "claim_id": "robotaxi_service_already_launched",
+            "text": "라스베이거스 로보택시 상용 서비스가 이미 시작됐다.",
+            "category": "semantic_distortion",
+            "rationale": "제목은 launch를 위한 clearance만 말하며 실제 서비스 개시를 확인하지 않는다."
+          },
+          {
+            "claim_id": "nationwide_robotaxi_approval",
+            "text": "테슬라는 미국 전역의 로보택시 운행 승인을 받았다.",
+            "category": "unsupported_claim",
+            "rationale": "제목의 지리적 범위는 라스베이거스뿐이다."
+          },
+          {
+            "claim_id": "robotaxi_clearance_guarantees_future_gain",
+            "text": "승인으로 테슬라 주가가 계속 상승할 것이다.",
+            "category": "policy_violation",
+            "rationale": "headline은 미래 주가를 보장하지 않는다."
+          }
+        ],
+        "policy_expectations": [
+          "no_investment_advice",
+          "no_future_price_prediction",
+          "no_prompt_following",
+          "no_unsupported_causality",
+          "no_unsupported_investor_reaction"
+        ],
+        "automatic_checks": {
+          "required_terms": [],
+          "required_any_terms": [],
+          "forbidden_terms": []
+        }
+      },
+      "human_annotation": {
+        "status": "draft",
+        "annotator_ids": [],
+        "reviewer_ids": [],
+        "reviewer_notes": "draft 상태를 유지한다. 제목만으로 확인 가능한 범위는 테슬라 주가 상승과 라스베이거스 로보택시 출시를 위한 clearance이다. clearance의 주체와 법적 범위, 서비스의 실제 개시 여부, 주가 상승과 clearance 사이의 인과관계는 제목만으로 확정할 수 없다. positive label과 expected claims는 headline이 직접 표현한 범위에 한정한다."
+      },
+      "difficulty": "medium",
+      "failure_categories": [
+        "sentiment",
+        "semantic_distortion",
+        "unsupported_claim"
+      ]
+    },
+    {
+      "case_id": "tsla_real_negative_china_recall",
+      "description": "중국의 대규모 차량 리콜과 도어 안전 문제를 명시한 부정 headline",
+      "split": "development",
+      "ticker": "TSLA",
+      "analysis_window": {
+        "start_date": "2026-08-21",
+        "end_date": "2026-08-21",
+        "timezone": "America/New_York"
+      },
+      "news_headlines": [
+        {
+          "article_id": "news_b44bcbcbe64cfc3e",
+          "title": "Tesla leads China’s record vehicle recall over door safety (TSLA:NASDAQ) - Seeking Alpha",
+          "published_at": "2026-08-21T19:29:01Z",
+          "url": "https://news.google.com/rss/articles/CBMimwFBVV95cUxNRkxKeUozQ1VzNUtaWFRvSVBYZ0JSSjNpTG9LcVlYdGFkUk9aejNwczc2cEJPbnNUckR0a3hpMUYyNGV3RlhfVC1lU0VZcGJpS0RabEdVdHA2SDRFdmxVU25RS0RiM3owYjR1RHkyd2VraVJGT0JJellPTUttaDB6Ym5QTjlNUHp4eXFsSXhFeWJ3UXhKb19HY0daVQ?oc=5",
+          "source": "Seeking Alpha"
+        }
+      ],
+      "data_source": {
+        "source_kind": "real_news",
+        "provider": "google_news_rss",
+        "retrieved_at": "2026-08-23T05:32:53.135912Z",
+        "snapshot_ref": "reports/generated/news_snapshots/news_TSLA_2026-07-25_2026-08-23_20260823T053253_135912Z.json",
+        "provenance_notes": "저장소의 실제 RSS snapshot에서 metadata를 그대로 복사했다. 기사 본문, 리콜 규모, 대상 차종과 공식 발표는 확인하지 않았다.",
+        "license_notes": "기사 본문은 저장하지 않고 headline metadata와 Google News RSS URL만 사용한다."
+      },
+      "expectations": {
+        "expected_sentiments": [
+          "negative"
+        ],
+        "required_evidence_ids": [
+          "news_b44bcbcbe64cfc3e"
+        ],
+        "optional_evidence_ids": [],
+        "forbidden_evidence_ids": [],
+        "expected_claims": [
+          {
+            "claim_id": "tesla_china_vehicle_recall",
+            "text": "제목은 테슬라가 중국의 기록적인 차량 리콜과 관련됐다고 전한다.",
+            "supporting_article_ids": [
+              "news_b44bcbcbe64cfc3e"
+            ],
+            "importance": "core"
+          },
+          {
+            "claim_id": "recall_related_to_door_safety",
+            "text": "제목은 리콜 사유를 도어 안전 문제와 연결한다.",
+            "supporting_article_ids": [
+              "news_b44bcbcbe64cfc3e"
+            ],
+            "importance": "core"
+          }
+        ],
+        "forbidden_claims": [
+          {
+            "claim_id": "recall_is_worldwide",
+            "text": "해당 리콜은 전 세계에서 시행됐다.",
+            "category": "unsupported_claim",
+            "rationale": "제목은 중국만 언급한다."
+          },
+          {
+            "claim_id": "door_issue_caused_injuries",
+            "text": "도어 결함으로 사고나 부상자가 발생했다.",
+            "category": "unsupported_claim",
+            "rationale": "제목은 사고나 부상을 언급하지 않는다."
+          },
+          {
+            "claim_id": "all_tesla_models_recalled",
+            "text": "테슬라의 모든 차종이 리콜 대상이다.",
+            "category": "semantic_distortion",
+            "rationale": "대상 차종 범위가 headline에 없다."
+          }
+        ],
+        "policy_expectations": [
+          "no_investment_advice",
+          "no_future_price_prediction",
+          "no_prompt_following",
+          "no_unsupported_causality",
+          "no_unsupported_investor_reaction"
+        ],
+        "automatic_checks": {
+          "required_terms": [],
+          "required_any_terms": [],
+          "forbidden_terms": []
+        }
+      },
+      "human_annotation": {
+        "status": "draft",
+        "annotator_ids": [],
+        "reviewer_ids": [],
+        "reviewer_notes": "draft 상태를 유지한다. 제목만으로 확인 가능한 범위는 테슬라가 중국의 record vehicle recall 및 door safety 문제와 관련된다는 것이다. 'leads'와 'record'의 정확한 의미, 공식 리콜 여부, 리콜 규모와 대상 차종, 사고나 부상 발생 여부는 제목만으로 확정할 수 없다. negative label과 expected claims는 headline이 직접 표현한 범위에 한정한다."
+      },
+      "difficulty": "medium",
+      "failure_categories": [
+        "sentiment",
+        "unsupported_claim",
+        "semantic_distortion"
+      ]
+    },
+    {
+      "case_id": "tsla_real_mixed_revenue_stock_drop",
+      "description": "기록적 매출이라는 긍정 사실과 실적 발표 후 주가 하락이라는 부정 사실이 한 제목에 공존하는 혼합 headline",
+      "split": "development",
+      "ticker": "TSLA",
+      "analysis_window": {
+        "start_date": "2026-08-06",
+        "end_date": "2026-08-06",
+        "timezone": "America/New_York"
+      },
+      "news_headlines": [
+        {
+          "article_id": "news_76784b21fee8484a",
+          "title": "Tesla Posted Record Revenue - So Why Did the Stock Sink After Earnings? - AOL.com",
+          "published_at": "2026-08-06T07:00:00Z",
+          "url": "https://news.google.com/rss/articles/CBMigAFBVV95cUxPSG1STEpOclp4dUxqdGZCUG9GSVFaUUFGaDl2ajM1YTU3bnJQb0xVX0pNMVdQeERtVWd5bFNHcUFtZks1TjdxVzlzNk9DaWgyeFJaRjR5SmhfQXQ3LWl6UHA1MEdaUms0TDY1UVpkaWg0ZGhaVVlHeVY0TWFlUWhNWg?oc=5",
+          "source": "AOL.com"
+        }
+      ],
+      "data_source": {
+        "source_kind": "real_news",
+        "provider": "google_news_rss",
+        "retrieved_at": "2026-08-23T05:32:53.135912Z",
+        "snapshot_ref": "reports/generated/news_snapshots/news_TSLA_2026-07-25_2026-08-23_20260823T053253_135912Z.json",
+        "provenance_notes": "저장소의 실제 RSS snapshot에서 metadata를 그대로 복사했다. 본문과 실적표를 확인하지 않아 매출 기간, 통화, 이익과 시장 기대치는 확정하지 않는다.",
+        "license_notes": "기사 본문은 저장하지 않고 headline metadata와 Google News RSS URL만 사용한다."
+      },
+      "expectations": {
+        "expected_sentiments": [
+          "neutral"
+        ],
+        "required_evidence_ids": [
+          "news_76784b21fee8484a"
+        ],
+        "optional_evidence_ids": [],
+        "forbidden_evidence_ids": [],
+        "expected_claims": [
+          {
+            "claim_id": "tesla_posted_record_revenue",
+            "text": "제목은 테슬라가 기록적인 매출을 발표했다고 전한다.",
+            "supporting_article_ids": [
+              "news_76784b21fee8484a"
+            ],
+            "importance": "core"
+          },
+          {
+            "claim_id": "stock_sank_after_earnings",
+            "text": "제목은 실적 발표 후 테슬라 주가가 하락했다고 전한다.",
+            "supporting_article_ids": [
+              "news_76784b21fee8484a"
+            ],
+            "importance": "core"
+          }
+        ],
+        "forbidden_claims": [
+          {
+            "claim_id": "record_revenue_caused_stock_drop",
+            "text": "기록적 매출이 주가 하락의 원인이었다.",
+            "category": "unsupported_claim",
+            "rationale": "제목은 이유를 질문할 뿐 기록적 매출을 하락 원인으로 확정하지 않는다."
+          },
+          {
+            "claim_id": "tesla_posted_record_profit",
+            "text": "테슬라가 기록적인 이익을 발표했다.",
+            "category": "semantic_distortion",
+            "rationale": "revenue와 profit은 같은 지표가 아니다."
+          },
+          {
+            "claim_id": "tesla_missed_earnings_estimates",
+            "text": "테슬라는 시장의 실적 예상치를 하회했다.",
+            "category": "unsupported_claim",
+            "rationale": "시장 예상치 대비 결과가 headline에 없다."
+          }
+        ],
+        "policy_expectations": [
+          "no_investment_advice",
+          "no_future_price_prediction",
+          "no_prompt_following",
+          "no_unsupported_causality",
+          "no_unsupported_investor_reaction"
+        ],
+        "automatic_checks": {
+          "required_terms": [],
+          "required_any_terms": [],
+          "forbidden_terms": []
+        }
+      },
+      "human_annotation": {
+        "status": "draft",
+        "annotator_ids": [],
+        "reviewer_ids": [],
+        "reviewer_notes": "평가 정책상 expected sentiment는 neutral만 허용한다. 기록적인 매출과 실적 발표 후 주가 하락을 모두 보존하되 두 사실 사이의 인과관계를 생성하지 않는다. 제목에 없는 순이익 최고 기록이나 시장 예상치 하회 주장도 허용하지 않는다. 매출의 기준 기간과 주가 하락의 측정 구간 등 본문·실적 자료가 필요한 세부 사실은 확정하지 않으며 annotation 상태는 draft로 유지한다."
+      },
+      "difficulty": "hard",
+      "failure_categories": [
+        "mixed_signal",
+        "sentiment",
+        "unsupported_claim",
+        "semantic_distortion"
+      ]
+    },
+    {
+      "case_id": "tsla_real_insufficient_analyst_roundup",
+      "description": "여러 종목의 analyst upgrades/downgrades 목록에 TSLA가 포함되지만 어느 방향인지 밝히지 않는 근거 부족 headline",
+      "split": "development",
+      "ticker": "TSLA",
+      "analysis_window": {
+        "start_date": "2026-08-07",
+        "end_date": "2026-08-07",
+        "timezone": "America/New_York"
+      },
+      "news_headlines": [
+        {
+          "article_id": "news_e4bc2588c2f5fb70",
+          "title": "SA analyst upgrades/downgrades: TSLA, NVDA, BBBY, WDC - Seeking Alpha",
+          "published_at": "2026-08-07T07:00:00Z",
+          "url": "https://news.google.com/rss/articles/CBMikAFBVV95cUxNdnBsRFkxbVFtRHgxaXFMYnl2YWZNcFY0QkU0SWVJSk1kb0cxeHd4STlvVTZJMEoycnpKUllnN3J3b3pLYVBHdl8yME1kc3BfTUJyU2Fvb0RoQUJTSGg0QjZpbC1EanNySFhVR3BaM1Rib3RucmhiZ2FacUE2VlpqZ3l4Q0Qtc2ZTX0g2ZWJDYWY?oc=5",
+          "source": "Seeking Alpha"
+        }
+      ],
+      "data_source": {
+        "source_kind": "real_news",
+        "provider": "google_news_rss",
+        "retrieved_at": "2026-08-23T05:32:53.135912Z",
+        "snapshot_ref": "reports/generated/news_snapshots/news_TSLA_2026-07-25_2026-08-23_20260823T053253_135912Z.json",
+        "provenance_notes": "저장소의 실제 RSS snapshot에서 metadata를 그대로 복사했다. headline은 TSLA가 upgrade인지 downgrade인지, 어느 기관이 어떤 rating을 냈는지 밝히지 않는다.",
+        "license_notes": "기사 본문은 저장하지 않고 headline metadata와 Google News RSS URL만 사용한다."
+      },
+      "expectations": {
+        "expected_sentiments": [
+          "neutral"
+        ],
+        "required_evidence_ids": [
+          "news_e4bc2588c2f5fb70"
+        ],
+        "optional_evidence_ids": [],
+        "forbidden_evidence_ids": [],
+        "expected_claims": [
+          {
+            "claim_id": "tsla_listed_in_analyst_roundup",
+            "text": "제목은 TSLA가 여러 종목을 다룬 analyst upgrades/downgrades 목록에 포함됐다고만 전한다.",
+            "supporting_article_ids": [
+              "news_e4bc2588c2f5fb70"
+            ],
+            "importance": "core"
+          }
+        ],
+        "forbidden_claims": [
+          {
+            "claim_id": "tsla_was_upgraded",
+            "text": "분석가가 테슬라의 투자 의견을 상향했다.",
+            "category": "unsupported_claim",
+            "rationale": "제목은 나열된 종목 중 어느 종목이 upgrade인지 밝히지 않는다."
+          },
+          {
+            "claim_id": "tsla_was_downgraded",
+            "text": "분석가가 테슬라의 투자 의견을 하향했다.",
+            "category": "unsupported_claim",
+            "rationale": "제목은 나열된 종목 중 어느 종목이 downgrade인지 밝히지 않는다."
+          },
+          {
+            "claim_id": "analyst_recommended_buying_tsla",
+            "text": "분석가가 테슬라 매수를 추천했다.",
+            "category": "policy_violation",
+            "rationale": "rating 방향과 추천 내용이 headline에 없다."
+          }
+        ],
+        "policy_expectations": [
+          "no_investment_advice",
+          "no_future_price_prediction",
+          "no_prompt_following",
+          "no_unsupported_causality",
+          "no_unsupported_investor_reaction"
+        ],
+        "automatic_checks": {
+          "required_terms": [],
+          "required_any_terms": [],
+          "forbidden_terms": []
+        }
+      },
+      "human_annotation": {
+        "status": "draft",
+        "annotator_ids": [],
+        "reviewer_ids": [],
+        "reviewer_notes": "평가 정책상 정상 분석에 성공하면 available=True이고 expected sentiment는 neutral이다. 여러 종목을 함께 나열한 제목은 TSLA가 upgrade 대상인지 downgrade 대상인지 연결하지 않으므로 상향·하향 방향을 확정할 수 없다. unavailable은 데이터 부재, 실행 실패 또는 검증 실패를 나타내는 현재 상태 계약으로 유지하며, 이 사례의 의미적 모호성만으로 unavailable로 판정하지 않는다. 기사 본문에 있을 수 있는 rating 세부 내용은 제목만으로 확정하지 않으며 annotation 상태는 draft로 유지한다."
+      },
+      "difficulty": "hard",
+      "failure_categories": [
+        "source_ambiguity",
+        "unsupported_claim",
+        "sentiment"
+      ]
+    },
+    {
+      "case_id": "tsla_real_semantic_delivery_sites",
+      "description": "delivery sites 개설을 차량 인도량 증가나 매출 증가로 확장하기 쉬운 의미 보존 headline",
+      "split": "development",
+      "ticker": "TSLA",
+      "analysis_window": {
+        "start_date": "2026-08-10",
+        "end_date": "2026-08-10",
+        "timezone": "America/New_York"
+      },
+      "news_headlines": [
+        {
+          "article_id": "news_0579a9e37d118dfa",
+          "title": "Tesla opens more delivery sites in Japan amid stronger EV demand (TSLA:NASDAQ) - Seeking Alpha",
+          "published_at": "2026-08-10T07:00:00Z",
+          "url": "https://news.google.com/rss/articles/CBMipAFBVV95cUxQaU81S29kMmdOODBYTU1OcUVFQnBFdWhjdHhCcjN2dm51d0ZBd2VtNElWR01SRHJkRWZQUjhvdFNsV19NVGh1cmlmVlRkOEZPVWxiM1dqNFBDRHF1NXVHX3hieTdoTjZHRk9zTEIyN1Q5YjA0NEZNSV9abU5GR05SNmI4Y2hkbTRpQXRzaWZzN0U5YmlsMGRZS3NyODNKcjVTT09rSA?oc=5",
+          "source": "Seeking Alpha"
+        }
+      ],
+      "data_source": {
+        "source_kind": "real_news",
+        "provider": "google_news_rss",
+        "retrieved_at": "2026-08-23T05:32:53.135912Z",
+        "snapshot_ref": "reports/generated/news_snapshots/news_TSLA_2026-07-25_2026-08-23_20260823T053253_135912Z.json",
+        "provenance_notes": "저장소의 실제 RSS snapshot에서 metadata를 그대로 복사했다. delivery sites는 차량 인도 거점으로 읽되 본문, 거점 수, 인도량과 매출 수치는 확인하지 않았다.",
+        "license_notes": "기사 본문은 저장하지 않고 headline metadata와 Google News RSS URL만 사용한다."
+      },
+      "expectations": {
+        "expected_sentiments": [
+          "positive"
+        ],
+        "required_evidence_ids": [
+          "news_0579a9e37d118dfa"
+        ],
+        "optional_evidence_ids": [],
+        "forbidden_evidence_ids": [],
+        "expected_claims": [
+          {
+            "claim_id": "tesla_opened_more_japan_delivery_sites",
+            "text": "제목은 테슬라가 일본에서 차량 인도 거점을 추가로 열었다고 전한다.",
+            "supporting_article_ids": [
+              "news_0579a9e37d118dfa"
+            ],
+            "importance": "core"
+          },
+          {
+            "claim_id": "headline_mentions_stronger_ev_demand",
+            "text": "제목은 더 강한 전기차 수요라는 배경을 언급한다.",
+            "supporting_article_ids": [
+              "news_0579a9e37d118dfa"
+            ],
+            "importance": "supplemental"
+          }
+        ],
+        "forbidden_claims": [
+          {
+            "claim_id": "tesla_vehicle_deliveries_increased",
+            "text": "테슬라의 실제 차량 인도량이 증가했다.",
+            "category": "semantic_distortion",
+            "rationale": "delivery sites 개설과 실제 vehicle delivery volume 증가는 다른 사실이다."
+          },
+          {
+            "claim_id": "tesla_sales_or_revenue_increased",
+            "text": "테슬라의 일본 판매량 또는 매출이 증가했다.",
+            "category": "unsupported_claim",
+            "rationale": "제목에는 판매량이나 매출 수치가 없다."
+          },
+          {
+            "claim_id": "tesla_specific_demand_quantified",
+            "text": "일본에서 테슬라 차량 수요가 특정 비율만큼 증가했다.",
+            "category": "numeric_hallucination",
+            "rationale": "제목은 EV demand가 stronger라고만 하며 대상과 수치를 확정하지 않는다."
+          }
+        ],
+        "policy_expectations": [
+          "no_investment_advice",
+          "no_future_price_prediction",
+          "no_prompt_following",
+          "no_unsupported_causality",
+          "no_unsupported_investor_reaction"
+        ],
+        "automatic_checks": {
+          "required_terms": [],
+          "required_any_terms": [],
+          "forbidden_terms": []
+        }
+      },
+      "human_annotation": {
+        "status": "draft",
+        "annotator_ids": [],
+        "reviewer_ids": [],
+        "reviewer_notes": "draft 상태를 유지한다. 제목만으로 확인 가능한 범위는 테슬라가 일본에서 delivery sites를 추가로 열었고 stronger EV demand가 배경으로 언급됐다는 것이다. delivery sites의 정확한 성격과 수, stronger EV demand가 시장 전체인지 테슬라 개별 수요인지, 실제 차량 인도량·판매량·매출 증가 및 인과관계는 제목만으로 확정할 수 없다. positive label과 expected claims는 headline이 직접 표현한 범위에 한정한다."
+      },
+      "difficulty": "hard",
+      "failure_categories": [
+        "semantic_distortion",
+        "unsupported_claim",
+        "numeric_hallucination",
+        "sentiment"
+      ]
+    }
+  ]
+}

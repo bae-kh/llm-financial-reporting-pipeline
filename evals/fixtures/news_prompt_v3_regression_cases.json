@@ -1,0 +1,201 @@
+{
+  "fixture_version": "1.0",
+  "prompt_version": "news-analyzer-prompt-v3",
+  "mode": "offline_prompt_contract",
+  "description": "타사 headline으로 금융·자동차 사건 의미 보존 지침을 점검하는 Prompt v3 회귀 fixture. LLM 품질 결과나 sentiment 정답이 아니다.",
+  "cases": [
+    {
+      "case_id": "msft_record_revenue_profit_decline",
+      "ticker": "MSFT",
+      "headline": "Microsoft posts record revenue while quarterly profit falls",
+      "concepts": [
+        "revenue_profit_earnings",
+        "record_large"
+      ],
+      "allowed_interpretations": [
+        "마이크로소프트는 기록적인 매출을 기록했고 분기 이익은 감소했다."
+      ],
+      "error_interpretations": [
+        "마이크로소프트가 기록적인 순이익을 발표했다.",
+        "마이크로소프트가 단순히 대규모 매출을 기록했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "samsung_large_profit_record_revenue",
+      "ticker": "005930.KS",
+      "headline": "Samsung Electronics reports large operating profit as revenue reaches a record",
+      "concepts": [
+        "revenue_profit_earnings",
+        "record_large"
+      ],
+      "allowed_interpretations": [
+        "삼성전자는 대규모 영업이익과 기록적인 매출을 보고했다."
+      ],
+      "error_interpretations": [
+        "삼성전자는 기록적인 영업이익과 대규모 매출을 보고했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "adobe_earnings_revenue_flat",
+      "ticker": "ADBE",
+      "headline": "Adobe earnings beat estimates while revenue remains flat",
+      "concepts": [
+        "revenue_profit_earnings"
+      ],
+      "allowed_interpretations": [
+        "어도비의 실적은 예상치를 웃돌았고 매출은 보합이었다."
+      ],
+      "error_interpretations": [
+        "어도비의 순이익과 매출이 모두 증가했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "rivian_delivery_center_opened",
+      "ticker": "RIVN",
+      "headline": "Rivian opens a new delivery center in Munich",
+      "concepts": [
+        "delivery_site_volume"
+      ],
+      "allowed_interpretations": [
+        "리비안이 뮌헨에 새 차량 인도 거점을 열었다."
+      ],
+      "error_interpretations": [
+        "리비안의 차량 인도량이 증가했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "ford_vehicle_deliveries_increased",
+      "ticker": "F",
+      "headline": "Ford reports quarterly vehicle deliveries rose 12%",
+      "concepts": [
+        "delivery_site_volume",
+        "vehicle_recall_delivery"
+      ],
+      "allowed_interpretations": [
+        "포드의 분기 차량 인도량이 12% 증가했다."
+      ],
+      "error_interpretations": [
+        "포드의 차량 인도 거점이 12% 증가했다.",
+        "포드가 차량 리콜을 12% 확대했다."
+      ],
+      "translation_rule_scope": "vehicle_delivery_context"
+    },
+    {
+      "case_id": "gm_linked_record_vehicle_recall",
+      "ticker": "GM",
+      "headline": "General Motors linked to record vehicle recall over brake safety",
+      "concepts": [
+        "vehicle_recall_delivery",
+        "record_large",
+        "action_status"
+      ],
+      "allowed_interpretations": [
+        "GM은 브레이크 안전 문제와 관련된 기록적인 차량 리콜에 연관됐다."
+      ],
+      "error_interpretations": [
+        "GM이 대규모 차량 리콜을 발표했다.",
+        "GM이 기록적인 차량 리콜을 완료했다.",
+        "GM의 차량 인도량이 감소했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "hyundai_announces_large_battery_recall",
+      "ticker": "005380.KS",
+      "headline": "Hyundai announces a large battery recall",
+      "concepts": [
+        "record_large",
+        "action_status"
+      ],
+      "allowed_interpretations": [
+        "현대차가 대규모 배터리 리콜을 발표했다."
+      ],
+      "error_interpretations": [
+        "현대차가 기록적인 배터리 리콜을 완료했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "bmw_announces_plant_launch_plan",
+      "ticker": "BMW.DE",
+      "headline": "BMW announces a plan to launch a new battery plant in Hungary",
+      "concepts": [
+        "action_status"
+      ],
+      "allowed_interpretations": [
+        "BMW가 헝가리의 새 배터리 공장 가동 계획을 발표했다."
+      ],
+      "error_interpretations": [
+        "BMW가 헝가리 배터리 공장을 가동했다.",
+        "BMW가 헝가리 배터리 공장을 완공했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "waymo_launches_driverless_service",
+      "ticker": "GOOGL",
+      "headline": "Waymo launches driverless ride service in Austin",
+      "concepts": [
+        "action_status"
+      ],
+      "allowed_interpretations": [
+        "웨이모가 오스틴에서 무인 차량 호출 서비스를 시작했다."
+      ],
+      "error_interpretations": [
+        "웨이모가 오스틴 서비스 계획만 발표했다.",
+        "웨이모가 오스틴 서비스 확대를 완료했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "toyota_completes_factory_expansion",
+      "ticker": "TM",
+      "headline": "Toyota completes expansion of its Kentucky factory",
+      "concepts": [
+        "action_status"
+      ],
+      "allowed_interpretations": [
+        "도요타가 켄터키 공장 확장을 완료했다."
+      ],
+      "error_interpretations": [
+        "도요타가 켄터키 공장 확장 계획을 발표했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "analyst_roundup_multiple_companies",
+      "ticker": "AMZN",
+      "headline": "Analyst upgrades/downgrades roundup: Amazon, IBM, Oracle",
+      "concepts": [
+        "roundup_rating_change"
+      ],
+      "allowed_interpretations": [
+        "아마존이 여러 기업을 다룬 투자의견 상향·하향 roundup에 포함됐다."
+      ],
+      "error_interpretations": [
+        "분석가가 아마존의 투자의견을 상향했다.",
+        "분석가가 아마존의 투자의견을 하향했다."
+      ],
+      "translation_rule_scope": "base_only"
+    },
+    {
+      "case_id": "intel_confirmed_rating_upgrade",
+      "ticker": "INTC",
+      "headline": "Barclays upgrades Intel to Overweight",
+      "concepts": [
+        "roundup_rating_change"
+      ],
+      "allowed_interpretations": [
+        "바클레이스가 인텔의 투자의견을 Overweight로 상향했다."
+      ],
+      "error_interpretations": [
+        "인텔이 상향·하향 roundup 목록에 포함됐을 뿐 방향은 알 수 없다."
+      ],
+      "translation_rule_scope": "base_only"
+    }
+  ]
+}

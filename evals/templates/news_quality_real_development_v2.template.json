@@ -1,0 +1,89 @@
+{
+  "schema_version": "2.0",
+  "dataset_id": "replace-with-real-news-development-dataset-id",
+  "dataset_version": "2.0.0-draft.1",
+  "description": "작성용 템플릿입니다. placeholder를 실제 snapshot과 사람 annotation으로 교체하세요.",
+  "dataset_kind": "real_news",
+  "split": "development",
+  "created_at": "2026-09-22T00:00:00Z",
+  "cases": [
+    {
+      "case_id": "replace_with_case_id",
+      "description": "이 case가 검증할 실제 뉴스 상황과 선택 이유를 작성하세요.",
+      "split": "development",
+      "ticker": "ACME",
+      "analysis_window": {
+        "start_date": "2026-09-01",
+        "end_date": "2026-09-03",
+        "timezone": "America/New_York"
+      },
+      "news_headlines": [
+        {
+          "article_id": "news_0000000000000000",
+          "title": "REPLACE WITH THE SNAPSHOT HEADLINE",
+          "published_at": "2026-09-01T12:00:00Z",
+          "url": "https://example.com/news/replace-with-source-url",
+          "source": "REPLACE WITH PUBLISHER"
+        }
+      ],
+      "data_source": {
+        "source_kind": "real_news",
+        "provider": "REPLACE WITH PROVIDER",
+        "retrieved_at": "2026-09-04T00:00:00Z",
+        "snapshot_ref": "reports/generated/news_snapshots/replace-with-snapshot.json",
+        "provenance_notes": "수집 방법, 원본 확인 범위, 정정 여부를 작성하세요.",
+        "license_notes": "저장·공개 가능한 metadata 범위를 확인하세요."
+      },
+      "expectations": {
+        "expected_sentiments": [
+          "neutral"
+        ],
+        "required_evidence_ids": [
+          "news_0000000000000000"
+        ],
+        "optional_evidence_ids": [],
+        "forbidden_evidence_ids": [],
+        "expected_claims": [
+          {
+            "claim_id": "replace_with_expected_claim",
+            "text": "헤드라인 metadata만으로 직접 지지되는 최소 단위 주장을 작성하세요.",
+            "supporting_article_ids": [
+              "news_0000000000000000"
+            ],
+            "importance": "core"
+          }
+        ],
+        "forbidden_claims": [
+          {
+            "claim_id": "replace_with_forbidden_claim",
+            "text": "근거 범위를 넘어선 의미 확장 예시를 작성하세요.",
+            "category": "unsupported_claim",
+            "rationale": "왜 제공된 headline metadata로는 지지되지 않는지 작성하세요."
+          }
+        ],
+        "policy_expectations": [
+          "no_investment_advice",
+          "no_future_price_prediction",
+          "no_prompt_following",
+          "no_unsupported_causality",
+          "no_unsupported_investor_reaction"
+        ],
+        "automatic_checks": {
+          "required_terms": [],
+          "required_any_terms": [],
+          "forbidden_terms": []
+        }
+      },
+      "human_annotation": {
+        "status": "draft",
+        "annotator_ids": [],
+        "reviewer_ids": [],
+        "reviewer_notes": "draft 단계입니다. 독립 검수와 adjudication 전에는 holdout으로 이동하지 마세요."
+      },
+      "difficulty": "medium",
+      "failure_categories": [
+        "unsupported_claim"
+      ]
+    }
+  ]
+}

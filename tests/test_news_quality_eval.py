@@ -1,7 +1,6 @@
 """뉴스 LLM 평가 fixture, grader, artifact 저장을 검증합니다."""
 
 import asyncio
-from pathlib import Path
 from types import SimpleNamespace
 
 import pytest

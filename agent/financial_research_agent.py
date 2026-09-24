@@ -6,7 +6,6 @@ import json
 import os
 import re
 from datetime import date
-from pathlib import Path
 from typing import Any, Literal
 
 from openai import AsyncOpenAI

@@ -11,6 +11,12 @@ from data_pipeline.news_fetcher import NewsItem
 
 
 DirectionHint = Literal["positive", "neutral", "negative", "conflicting"]
+VehicleEventConcept = Literal[
+    "delivery_location",
+    "vehicle_delivery_volume",
+    "vehicle_recall",
+]
+VehicleEventRole = Literal["source", "output"]
 
 
 @dataclass(frozen=True)
@@ -29,6 +35,8 @@ class HeadlinePolicy:
     명령형 문자열을 제거하고, LLM이 제목에 없는 사건 유형을 만들어내지
     못하도록 검증에 사용할 근거만 제공합니다.
     """
+
+    VALIDATOR_VERSION = "news-analyzer-validator-v2"
 
     DEFAULT_TICKER_ALIASES: Mapping[str, tuple[str, ...]] = {
         "AAPL": ("Apple", "Apple Inc"),
@@ -120,25 +128,13 @@ class HeadlinePolicy:
             ("earnings", "quarterly results", "financial results", "실적"),
         ),
         (
-            "vehicle_deliveries",
-            (
-                "인도량",
-                "차량 인도",
-                "차량 배송",
-                "배송 보고서",
-                "delivery report",
-                "vehicle deliveries",
-            ),
-            ("delivery", "deliveries", "인도량", "차량 인도"),
-        ),
-        (
             "revenue",
             ("매출", "revenue"),
             ("revenue", "매출"),
         ),
         (
             "product_recall",
-            ("제품 리콜", "차량 리콜", "product recall", "vehicle recall"),
+            ("제품 리콜", "product recall"),
             ("recall", "리콜"),
         ),
         (
@@ -147,6 +143,77 @@ class HeadlinePolicy:
             ("investigation", "probe", "regulator", "regulatory", "조사", "규제"),
         ),
     )
+
+    VEHICLE_EVENT_CONCEPT_ORDER: tuple[VehicleEventConcept, ...] = (
+        "delivery_location",
+        "vehicle_delivery_volume",
+        "vehicle_recall",
+    )
+    VEHICLE_EVENT_SOURCE_PATTERNS: Mapping[
+        VehicleEventConcept,
+        tuple[re.Pattern[str], ...],
+    ] = {
+        "delivery_location": tuple(
+            re.compile(pattern, re.IGNORECASE)
+            for pattern in (
+                r"\b(?:vehicle\s+)?delivery\s+"
+                r"(?:site|center|centre|location|hub)s?\b",
+                r"\b(?:vehicle\s+)?handover\s+"
+                r"(?:site|center|centre|location|hub|network)s?\b",
+                r"\bdelivery\s+network\b",
+                r"(?:차량\s*)?인도\s*"
+                r"(?:거점망|거점|장소|센터|시설|네트워크)",
+                r"(?:차량\s*)?(?:배송|출고)\s*"
+                r"(?:사이트|센터|거점|장소|시설)",
+            )
+        ),
+        "vehicle_delivery_volume": tuple(
+            re.compile(pattern, re.IGNORECASE)
+            for pattern in (
+                r"\bvehicle\s+deliveries\b",
+                r"\bvehicle\s+delivery\s+"
+                r"(?:volume|count|counts|number|numbers|figure|figures|"
+                r"report|reports|result|results)\b",
+                r"\b(?:number|count)\s+of\s+vehicles?\s+delivered\b",
+                r"\bvehicles?\s+delivered\b",
+                r"\bdelivered\b.{0,24}\bvehicles?\b",
+                r"차량\s*인도량",
+                r"(?:차량\s*)?인도\s*대수",
+                r"인도량",
+                r"차량\s*인도(?!\s*(?:거점망|거점|장소|센터|시설|네트워크))"
+                r".{0,20}(?:증가|감소|늘|줄|상승|하락)",
+            )
+        ),
+        "vehicle_recall": tuple(
+            re.compile(pattern, re.IGNORECASE)
+            for pattern in (
+                r"\b(?:vehicle|car|automobile|suv)s?\s+"
+                r"recall(?:s|ed|ing)?\b",
+                r"\brecall(?:s|ed|ing)?\b.{0,40}"
+                r"\b(?:vehicle|car|automobile|suv)s?\b",
+                r"(?:차량|자동차|차종|suv).{0,20}리콜",
+                r"리콜.{0,20}(?:차량|자동차|차종|suv)",
+            )
+        ),
+    }
+    # 출력은 수량을 의미하는 수식어가 붙은 단수형 delivery도 volume
+    # claim으로 본다. 다만 bare "delivery"/"차량 인도"는 근거나 claim으로
+    # 사용하지 않아 일반적인 상태·계획 표현을 대수 claim으로 과잉 분류하지 않는다.
+    VEHICLE_EVENT_OUTPUT_PATTERNS: Mapping[
+        VehicleEventConcept,
+        tuple[re.Pattern[str], ...],
+    ] = {
+        **VEHICLE_EVENT_SOURCE_PATTERNS,
+        "vehicle_delivery_volume": (
+            *VEHICLE_EVENT_SOURCE_PATTERNS["vehicle_delivery_volume"],
+            re.compile(
+                r"\b(?:record|record-breaking|large|large-scale)\s+"
+                r"vehicle\s+delivery\b",
+                re.IGNORECASE,
+            ),
+            re.compile(r"(?:대규모|기록적인?|사상\s*최대의?)\s*차량\s*인도"),
+        ),
+    }
 
     PROHIBITED_OUTPUT_PATTERNS: tuple[re.Pattern[str], ...] = tuple(
         re.compile(pattern, re.IGNORECASE)
@@ -292,7 +359,42 @@ class HeadlinePolicy:
             )
             if not source_grounded:
                 violations.append(rule_name)
+        output_vehicle_concepts = cls.vehicle_event_concepts(
+            normalized_output,
+            role="output",
+        )
+        supported_vehicle_concepts = frozenset(
+            concept
+            for source in normalized_sources
+            for concept in cls.vehicle_event_concepts(source, role="source")
+        )
+        violations.extend(
+            concept
+            for concept in cls.VEHICLE_EVENT_CONCEPT_ORDER
+            if concept in output_vehicle_concepts
+            and concept not in supported_vehicle_concepts
+        )
         return tuple(violations)
+
+    @classmethod
+    def vehicle_event_concepts(
+        cls,
+        text: str,
+        *,
+        role: VehicleEventRole,
+    ) -> frozenset[VehicleEventConcept]:
+        """차량 인도 거점·인도 대수·리콜을 phrase 단위로 구분합니다."""
+        normalized = cls.normalize(text)
+        patterns_by_concept = (
+            cls.VEHICLE_EVENT_SOURCE_PATTERNS
+            if role == "source"
+            else cls.VEHICLE_EVENT_OUTPUT_PATTERNS
+        )
+        return frozenset(
+            concept
+            for concept in cls.VEHICLE_EVENT_CONCEPT_ORDER
+            if any(pattern.search(normalized) for pattern in patterns_by_concept[concept])
+        )
 
     @staticmethod
     def normalize(text: str) -> str:

@@ -1,0 +1,216 @@
+{
+  "fixture_version": "1.0",
+  "validator_version": "news-analyzer-validator-v2",
+  "mode": "offline_validator_contract",
+  "description": "차량 인도 거점, 차량 인도 대수, 차량 리콜의 근거 구분을 검증하는 deterministic Validator fixture. 모델 품질 dataset이 아니다.",
+  "cases": [
+    {
+      "case_id": "rivian_delivery_center_location_pass",
+      "ticker": "RIVN",
+      "headlines": [
+        "Rivian opens a new delivery center in Munich"
+      ],
+      "summary": "리비안이 뮌헨에 새 차량 인도 거점을 열었습니다.",
+      "topics": [
+        {
+          "topic": "차량 인도 거점 개설",
+          "explanation": "리비안이 뮌헨에 새 인도 센터를 열었습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    },
+    {
+      "case_id": "lucid_delivery_sites_volume_reject",
+      "ticker": "LCID",
+      "headlines": [
+        "Lucid expands its delivery sites across Norway"
+      ],
+      "summary": "루시드의 실제 차량 인도량이 증가했습니다.",
+      "topics": [
+        {
+          "topic": "차량 인도량 증가",
+          "explanation": "루시드의 차량 인도 대수가 늘었습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": "vehicle_delivery_volume"
+    },
+    {
+      "case_id": "ford_vehicle_delivery_volume_pass",
+      "ticker": "F",
+      "headlines": [
+        "Ford reports quarterly vehicle deliveries rose 12%"
+      ],
+      "summary": "포드의 분기 차량 인도량이 12% 증가했습니다.",
+      "topics": [
+        {
+          "topic": "분기 차량 인도량 증가",
+          "explanation": "포드가 분기 차량 인도 대수 증가를 보고했습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    },
+    {
+      "case_id": "gm_vehicle_recall_pass",
+      "ticker": "GM",
+      "headlines": [
+        "General Motors announces a vehicle recall over brake safety"
+      ],
+      "summary": "GM이 브레이크 안전 문제로 차량 리콜을 발표했습니다.",
+      "topics": [
+        {
+          "topic": "차량 리콜",
+          "explanation": "브레이크 안전과 관련된 자동차 리콜입니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    },
+    {
+      "case_id": "volvo_vehicle_recall_to_volume_reject",
+      "ticker": "VOLV-B.ST",
+      "headlines": [
+        "Volvo issues a vehicle recall for steering defects"
+      ],
+      "summary": "볼보의 차량 인도량이 감소했습니다.",
+      "topics": [
+        {
+          "topic": "차량 인도량 감소",
+          "explanation": "볼보의 차량 인도 대수가 줄었습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": "vehicle_delivery_volume"
+    },
+    {
+      "case_id": "hyundai_location_and_volume_pass",
+      "ticker": "005380.KS",
+      "headlines": [
+        "Hyundai opens a delivery center as vehicle deliveries rise in Canada"
+      ],
+      "summary": "현대차가 캐나다에서 차량 인도 거점을 열었고 차량 인도량도 증가했습니다.",
+      "topics": [
+        {
+          "topic": "인도 거점과 차량 인도량",
+          "explanation": "새 인도 센터 개설과 차량 인도 대수 증가가 함께 보도됐습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    },
+    {
+      "case_id": "microsoft_unrelated_news_pass",
+      "ticker": "MSFT",
+      "headlines": [
+        "Microsoft opens a new AI research lab in Toronto"
+      ],
+      "summary": "마이크로소프트가 토론토에 새 AI 연구소를 열었습니다.",
+      "topics": [
+        {
+          "topic": "AI 연구소 개설",
+          "explanation": "토론토에 새로운 연구 시설을 열었다는 내용입니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    },
+    {
+      "case_id": "bmw_volume_to_location_reject",
+      "ticker": "BMW.DE",
+      "headlines": [
+        "BMW vehicle deliveries rose in the second quarter"
+      ],
+      "summary": "BMW가 새 차량 인도 거점을 열었습니다.",
+      "topics": [
+        {
+          "topic": "차량 인도 센터 개설",
+          "explanation": "BMW가 새로운 인도 장소를 마련했습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": "delivery_location"
+    },
+    {
+      "case_id": "toyota_volume_to_recall_reject",
+      "ticker": "TM",
+      "headlines": [
+        "Toyota vehicle deliveries increase in Europe"
+      ],
+      "summary": "도요타가 유럽에서 차량 리콜을 실시했습니다.",
+      "topics": [
+        {
+          "topic": "자동차 리콜",
+          "explanation": "도요타 차량의 리콜이 진행됐습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": "vehicle_recall"
+    },
+    {
+      "case_id": "byd_delivered_vehicles_synonym_pass",
+      "ticker": "1211.HK",
+      "headlines": [
+        "BYD delivered 500,000 vehicles in the fourth quarter"
+      ],
+      "summary": "BYD가 4분기에 차량 50만 대를 인도했습니다.",
+      "topics": [
+        {
+          "topic": "차량 인도 대수",
+          "explanation": "4분기 차량 인도량은 50만 대입니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    },
+    {
+      "case_id": "gm_recall_verb_structure_pass",
+      "ticker": "GM",
+      "headlines": [
+        "GM recalls 120,000 SUVs over a software defect"
+      ],
+      "summary": "GM이 소프트웨어 결함으로 SUV 12만 대를 리콜합니다.",
+      "topics": [
+        {
+          "topic": "차량 리콜",
+          "explanation": "GM의 SUV 리콜에 관한 내용입니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    },
+    {
+      "case_id": "nio_handover_network_location_pass",
+      "ticker": "NIO",
+      "headlines": [
+        "Nio expands its vehicle handover network in Europe"
+      ],
+      "summary": "니오가 유럽의 차량 인도 거점망을 확대했습니다.",
+      "topics": [
+        {
+          "topic": "차량 인도 네트워크 확대",
+          "explanation": "유럽의 차량 인도 거점 네트워크를 늘렸습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    },
+    {
+      "case_id": "polestar_shipping_center_classified_as_location",
+      "ticker": "PSNY",
+      "headlines": [
+        "Polestar opens a new delivery hub in Sweden"
+      ],
+      "summary": "폴스타가 스웨덴에 새 배송 센터를 열었습니다.",
+      "topics": [
+        {
+          "topic": "배송 거점 개설",
+          "explanation": "스웨덴에 새로운 배송 장소를 열었습니다.",
+          "supporting_headline_indexes": [0]
+        }
+      ],
+      "expected_violation": null
+    }
+  ]
+}

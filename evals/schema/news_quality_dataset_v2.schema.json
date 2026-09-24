@@ -1,0 +1,670 @@
+{
+  "$defs": {
+    "AutomaticChecks": {
+      "additionalProperties": false,
+      "description": "Deterministic lexical checks retained for legacy evaluator compatibility.",
+      "properties": {
+        "required_terms": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Terms",
+          "type": "array"
+        },
+        "required_any_terms": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Any Terms",
+          "type": "array"
+        },
+        "forbidden_terms": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Terms",
+          "type": "array"
+        }
+      },
+      "title": "AutomaticChecks",
+      "type": "object"
+    },
+    "CaseExpectations": {
+      "additionalProperties": false,
+      "description": "Ground truth and deterministic expectations for one case.",
+      "properties": {
+        "expected_sentiments": {
+          "items": {
+            "enum": [
+              "positive",
+              "neutral",
+              "negative"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Expected Sentiments",
+          "type": "array"
+        },
+        "required_evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Required Evidence Ids",
+          "type": "array"
+        },
+        "optional_evidence_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Optional Evidence Ids",
+          "type": "array"
+        },
+        "forbidden_evidence_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Forbidden Evidence Ids",
+          "type": "array"
+        },
+        "expected_claims": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ExpectedClaim"
+          },
+          "title": "Expected Claims",
+          "type": "array"
+        },
+        "forbidden_claims": {
+          "default": [],
+          "items": {
+            "$ref": "#/$defs/ForbiddenClaim"
+          },
+          "title": "Forbidden Claims",
+          "type": "array"
+        },
+        "policy_expectations": {
+          "default": [
+            "no_investment_advice",
+            "no_future_price_prediction",
+            "no_prompt_following",
+            "no_unsupported_causality",
+            "no_unsupported_investor_reaction"
+          ],
+          "items": {
+            "enum": [
+              "no_investment_advice",
+              "no_future_price_prediction",
+              "no_prompt_following",
+              "no_unsupported_causality",
+              "no_unsupported_investor_reaction"
+            ],
+            "type": "string"
+          },
+          "title": "Policy Expectations",
+          "type": "array"
+        },
+        "automatic_checks": {
+          "$ref": "#/$defs/AutomaticChecks"
+        }
+      },
+      "required": [
+        "expected_sentiments",
+        "required_evidence_ids"
+      ],
+      "title": "CaseExpectations",
+      "type": "object"
+    },
+    "EvaluationArticle": {
+      "additionalProperties": false,
+      "description": "Headline metadata presented to the news analysis component.",
+      "properties": {
+        "article_id": {
+          "pattern": "^news_[0-9a-f]{16}$",
+          "title": "Article Id",
+          "type": "string"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        },
+        "published_at": {
+          "format": "date-time",
+          "title": "Published At",
+          "type": "string"
+        },
+        "url": {
+          "minLength": 1,
+          "title": "Url",
+          "type": "string"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "article_id",
+        "title",
+        "published_at",
+        "url",
+        "source"
+      ],
+      "title": "EvaluationArticle",
+      "type": "object"
+    },
+    "EvaluationCaseV2": {
+      "additionalProperties": false,
+      "description": "One versioned and reviewable news quality evaluation case.",
+      "properties": {
+        "case_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]+$",
+          "title": "Case Id",
+          "type": "string"
+        },
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "split": {
+          "enum": [
+            "development",
+            "holdout",
+            "legacy"
+          ],
+          "title": "Split",
+          "type": "string"
+        },
+        "ticker": {
+          "pattern": "^[A-Z][A-Z0-9.-]{0,9}$",
+          "title": "Ticker",
+          "type": "string"
+        },
+        "analysis_window": {
+          "$ref": "#/$defs/EvaluationWindow"
+        },
+        "news_headlines": {
+          "items": {
+            "$ref": "#/$defs/EvaluationArticle"
+          },
+          "minItems": 1,
+          "title": "News Headlines",
+          "type": "array"
+        },
+        "data_source": {
+          "$ref": "#/$defs/EvaluationDataSource"
+        },
+        "expectations": {
+          "$ref": "#/$defs/CaseExpectations"
+        },
+        "human_annotation": {
+          "$ref": "#/$defs/HumanAnnotation"
+        },
+        "difficulty": {
+          "enum": [
+            "easy",
+            "medium",
+            "hard"
+          ],
+          "title": "Difficulty",
+          "type": "string"
+        },
+        "failure_categories": {
+          "items": {
+            "enum": [
+              "sentiment",
+              "missing_evidence",
+              "fabricated_evidence",
+              "semantic_distortion",
+              "unsupported_claim",
+              "prompt_injection",
+              "irrelevant_news",
+              "numeric_hallucination",
+              "policy_violation",
+              "mixed_signal",
+              "temporal_error",
+              "source_ambiguity",
+              "legacy_regression"
+            ],
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Failure Categories",
+          "type": "array"
+        },
+        "legacy_compatibility": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/LegacyCompatibility"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "case_id",
+        "description",
+        "split",
+        "ticker",
+        "analysis_window",
+        "news_headlines",
+        "data_source",
+        "expectations",
+        "human_annotation",
+        "difficulty",
+        "failure_categories"
+      ],
+      "title": "EvaluationCaseV2",
+      "type": "object"
+    },
+    "EvaluationDataSource": {
+      "additionalProperties": false,
+      "description": "Provenance for the case without asserting source credibility.",
+      "properties": {
+        "source_kind": {
+          "enum": [
+            "real_news",
+            "synthetic_adversarial"
+          ],
+          "title": "Source Kind",
+          "type": "string"
+        },
+        "provider": {
+          "minLength": 1,
+          "title": "Provider",
+          "type": "string"
+        },
+        "retrieved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Retrieved At"
+        },
+        "snapshot_ref": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Snapshot Ref"
+        },
+        "provenance_notes": {
+          "minLength": 1,
+          "title": "Provenance Notes",
+          "type": "string"
+        },
+        "license_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "License Notes"
+        }
+      },
+      "required": [
+        "source_kind",
+        "provider",
+        "provenance_notes"
+      ],
+      "title": "EvaluationDataSource",
+      "type": "object"
+    },
+    "EvaluationWindow": {
+      "additionalProperties": false,
+      "description": "Inclusive calendar window used by one evaluation case.",
+      "properties": {
+        "start_date": {
+          "format": "date",
+          "title": "Start Date",
+          "type": "string"
+        },
+        "end_date": {
+          "format": "date",
+          "title": "End Date",
+          "type": "string"
+        },
+        "timezone": {
+          "default": "America/New_York",
+          "title": "Timezone",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start_date",
+        "end_date"
+      ],
+      "title": "EvaluationWindow",
+      "type": "object"
+    },
+    "ExpectedClaim": {
+      "additionalProperties": false,
+      "description": "Atomic claim that a correct answer may express.",
+      "properties": {
+        "claim_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]+$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "supporting_article_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Supporting Article Ids",
+          "type": "array"
+        },
+        "importance": {
+          "default": "core",
+          "enum": [
+            "core",
+            "supplemental"
+          ],
+          "title": "Importance",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "supporting_article_ids"
+      ],
+      "title": "ExpectedClaim",
+      "type": "object"
+    },
+    "ForbiddenClaim": {
+      "additionalProperties": false,
+      "description": "Atomic meaning that must not appear in a correct answer.",
+      "properties": {
+        "claim_id": {
+          "pattern": "^[a-z0-9][a-z0-9_-]+$",
+          "title": "Claim Id",
+          "type": "string"
+        },
+        "text": {
+          "minLength": 1,
+          "title": "Text",
+          "type": "string"
+        },
+        "category": {
+          "enum": [
+            "sentiment",
+            "missing_evidence",
+            "fabricated_evidence",
+            "semantic_distortion",
+            "unsupported_claim",
+            "prompt_injection",
+            "irrelevant_news",
+            "numeric_hallucination",
+            "policy_violation",
+            "mixed_signal",
+            "temporal_error",
+            "source_ambiguity",
+            "legacy_regression"
+          ],
+          "title": "Category",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        }
+      },
+      "required": [
+        "claim_id",
+        "text",
+        "category",
+        "rationale"
+      ],
+      "title": "ForbiddenClaim",
+      "type": "object"
+    },
+    "HumanAnnotation": {
+      "additionalProperties": false,
+      "description": "Human labels and adjudication state; IDs should be pseudonymous.",
+      "properties": {
+        "status": {
+          "enum": [
+            "draft",
+            "reviewed",
+            "approved",
+            "legacy_unreviewed"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "annotator_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Annotator Ids",
+          "type": "array"
+        },
+        "reviewer_ids": {
+          "default": [],
+          "items": {
+            "type": "string"
+          },
+          "title": "Reviewer Ids",
+          "type": "array"
+        },
+        "annotated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Annotated At"
+        },
+        "reviewed_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewed At"
+        },
+        "sentiment_rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Sentiment Rationale"
+        },
+        "evidence_rationale": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Rationale"
+        },
+        "claim_grounding_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Claim Grounding Notes"
+        },
+        "reviewer_notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reviewer Notes"
+        }
+      },
+      "required": [
+        "status"
+      ],
+      "title": "HumanAnnotation",
+      "type": "object"
+    },
+    "LegacyCompatibility": {
+      "additionalProperties": false,
+      "description": "Fields consumed by the current v1 deterministic grader.",
+      "properties": {
+        "recorded_output": {
+          "additionalProperties": true,
+          "title": "Recorded Output",
+          "type": "object"
+        }
+      },
+      "required": [
+        "recorded_output"
+      ],
+      "title": "LegacyCompatibility",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "A homogeneous dataset track and split with strict case validation.",
+  "properties": {
+    "schema_version": {
+      "const": "2.0",
+      "default": "2.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "dataset_id": {
+      "pattern": "^[a-z0-9][a-z0-9_-]+$",
+      "title": "Dataset Id",
+      "type": "string"
+    },
+    "dataset_version": {
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:-[a-z0-9][a-z0-9.-]*)?$",
+      "title": "Dataset Version",
+      "type": "string"
+    },
+    "description": {
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "dataset_kind": {
+      "enum": [
+        "real_news",
+        "synthetic_adversarial",
+        "legacy_synthetic"
+      ],
+      "title": "Dataset Kind",
+      "type": "string"
+    },
+    "split": {
+      "enum": [
+        "development",
+        "holdout",
+        "legacy"
+      ],
+      "title": "Split",
+      "type": "string"
+    },
+    "created_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Created At"
+    },
+    "holdout_frozen_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Holdout Frozen At"
+    },
+    "cases": {
+      "items": {
+        "$ref": "#/$defs/EvaluationCaseV2"
+      },
+      "minItems": 1,
+      "title": "Cases",
+      "type": "array"
+    }
+  },
+  "required": [
+    "dataset_id",
+    "dataset_version",
+    "description",
+    "dataset_kind",
+    "split",
+    "created_at",
+    "cases"
+  ],
+  "title": "EvaluationDatasetV2",
+  "type": "object"
+}

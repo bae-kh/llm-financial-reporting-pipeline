@@ -17,18 +17,18 @@
 | Benchmark | 대상 종목과 동일한 실제 거래일의 SPY 수익률 비교 |
 | 뉴스 수집 | Google News RSS 날짜 분할, 100건 포화 구간 재분할, 기간 필터, 중복 제거 |
 | LLM 입력 통제 | 종목 관련성·prompt injection 필터, 날짜 균형 70% + 중요도 30% 선택 |
-| LLM 출력 통제 | Structured Outputs, evidence ID·사건 의미·혼합 감성·금지 주장 검증 |
+| LLM 출력 통제 | Structured Outputs, evidence ID, 제한된 deterministic event/phrase, 혼합 감성·금지 주장 검증 |
 | 실패 처리 | 최대 2회 재작성, 최종 실패 시 `unavailable`, 정량 보고서는 가능한 범위에서 계속 |
 | 추적 가능성 | Markdown, 뉴스 Snapshot, 단계별 Run metadata를 `run_id`로 연결 |
-| 선택적 Agent | 리포트 생성·Run 조회·지표 설명 3개 도구, 주문·추천 요청 차단 |
+| 선택적 Agent | 기존 workflow를 호출하는 제한된 3-tool interface, 주문·추천 요청 차단 |
 
 ## 검증 결과
 
-2026-08-23 기준 현재 저장소에서 확인한 결과입니다.
+2026-09-24 기준 현재 로컬 작업 트리에서 확인한 결과입니다. Live 항목은 저장된 실험 결과이며 이번 문서화 작업에서는 API를 다시 호출하지 않았습니다.
 
 | 검증 | 결과 | 해석 범위 |
 |---|---:|---|
-| 전체 pytest | **170 passed** | 현재 금융 리포팅 workflow, Agent, eval 전체 회귀 테스트 |
+| 전체 pytest | **235 passed** | 현재 금융 리포팅 workflow, Agent, eval 및 Evaluation v2 Runner/Grader 전체 회귀 테스트 |
 | Live 뉴스 품질 eval | **6 / 6** | `gpt-4o-mini`, 제한된 합성 headline 6개 case, 1회 실행 |
 | Live Agent routing eval | **4 / 4** | 실제 모델의 도구 선택, side-effect-free stub tool 사용 |
 | 실제 TSLA end-to-end | **완료** | yfinance + Google News RSS + OpenAI Responses API + artifact 저장 |
@@ -58,32 +58,27 @@
                   AnalysisWindow
         ticker + inclusive calendar dates + timezone
                          │
-             ┌───────────┴───────────┐
-             ▼                       ▼
-        PriceFetcher             NewsFetcher
-     target + SPY + warm-up   date chunk + saturation split
-             │                       │
-             ▼                       ▼
-       MarketAnalyzer          NewsSnapshotStore
-       deterministic                  │
-             │                        ▼
-             │                  HeadlinePolicy
-             │             relevance + injection guard
-             │                        │
-             │                        ▼
-             │                   NewsAnalyzer
-             │          date balance + importance selection
-             │          Structured Output + validation + retry
-             │                        │
-             └────────────┬───────────┘
-                          ▼
+                         ▼
+             1. PriceFetcher + SPY
+                         │
+                         ▼
+          MarketAnalyzer (deterministic)
+                         │
+                         ▼
+             2. NewsFetcher + Snapshot
+                         │
+                         ▼
+        HeadlinePolicy + NewsAnalyzer
+     select + Structured Output + validation + retry
+                         │
+                         ▼
                     ReportBuilder
-                          │
-                          ▼
+                         │
+                         ▼
        Markdown Report + News Snapshot + Run Metadata
 ```
 
-가격과 뉴스는 하나의 `AnalysisWindow`를 공유합니다. Agent도 금융 계산을 직접 수행하지 않고 동일한 workflow를 도구로 호출합니다.
+가격과 뉴스는 하나의 `AnalysisWindow`를 공유하며, 현재 workflow는 필수 시장 분석 후 선택적 뉴스 분석을 순차적으로 수행합니다. Agent도 금융 계산을 직접 수행하지 않고 동일한 workflow를 호출하는 제한된 Tool Calling interface입니다.
 
 자세한 책임 경계와 실패 상태는 [Architecture and Failure Policy](docs/architecture.md)에서 확인할 수 있습니다.
 
@@ -309,7 +304,7 @@ python -m pytest -q
 현재 결과:
 
 ```text
-170 passed
+235 passed
 ```
 
 테스트는 실제 yfinance·OpenAI 호출 대신 fake provider와 stub client를 주입해 반복 가능하게 실행합니다. 주요 범위는 다음과 같습니다.
@@ -337,6 +332,47 @@ python -m pytest -q
 python .\evaluate_news_quality.py --mode recorded
 python .\evaluate_agent_tools.py --mode recorded
 ```
+
+### Evaluation v2 데이터셋 검증
+
+Evaluation v2 1단계는 실제 모델을 호출하지 않고 데이터 계약, legacy 6개 case 호환성, dataset hash와 실행 전 manifest를 검증합니다.
+
+```powershell
+python .\validate_evaluation_dataset.py `
+  .\evals\templates\news_quality_real_development_v2.template.json
+```
+
+설계한 지표의 분모, human review 경계, 실제 뉴스 작성 절차와 holdout 운영 규칙은 [Evaluation v2 설계](docs/evaluation_v2.md)를 참고하세요. 기존 6개 synthetic case는 `legacy_synthetic/legacy` track으로 유지하며 실제 뉴스나 새 adversarial dataset의 정확도에 합산하지 않습니다.
+
+### Evaluation v2 Attempt telemetry
+
+시도별 전체 출력은 기본적으로 수집하지 않습니다. 평가 코드가 `AttemptTelemetryCollector(enabled=True)`를 `NewsAnalyzer`에 명시적으로 주입하고 `AttemptTelemetryArtifactStore.save()`를 호출한 경우에만 `reports/generated/evals/attempts/` 아래 별도 JSON artifact로 저장됩니다. 일반 `RunMetadata`, 운영 로그와 최종 `NewsAnalysis`에는 실패 초안이나 전체 출력이 추가되지 않습니다.
+
+수집된 attempt로 First-pass/Final-pass Validator Pass Rate, Rewrite Rescue Rate, 평균 attempt 수와 Final Unavailable Rate를 계산할 수 있습니다. 이 값들은 production validator 동작 지표이며 실제 의미 정확도나 품질 개선률이 아닙니다. 자세한 활성화 예시와 분모 정의는 [Evaluation v2 설계](docs/evaluation_v2.md#9-attempt-level-telemetry)를 참고하세요.
+
+### Evaluation v2 Runner / Grader
+
+기본 실행은 외부 API를 사용하지 않는 recorded mode입니다. 아래 fixture는 모델 출력 baseline이 아니라 Dataset→Analyzer→Telemetry→Grader→artifact 연결을 확인하는 수동 stub입니다.
+
+```powershell
+python .\evaluate_news_quality_v2.py `
+  --dataset .\evals\datasets\news\real\development\tsla_headlines_pilot_v2.json `
+  --recorded-responses .\evals\fixtures\news_quality_v2_recorded_smoke.json
+```
+
+결과는 git에서 제외된 `reports/generated/evals/v2/<eval_run_id>/`에 저장됩니다. 현재 pilot 5건은 모두 draft development case이므로 결과가 항상 `development_diagnostic`, `official_performance_eligible=false`, `semantic_accuracy_evaluated=false`로 표시됩니다. expected/forbidden claim, semantic distortion, unsupported claim과 validator false acceptance/rejection은 `human_review.md`에서 사람이 검수합니다.
+
+향후 live 실행은 `--mode live --allow-live --model <exact-model-id>`와 `OPENAI_API_KEY`가 모두 있어야만 활성화됩니다. 자세한 artifact·채점 경계는 [Evaluation v2 설계](docs/evaluation_v2.md#10-evaluation-v2-runner와-grader)를 참고하세요.
+
+### Evaluation-driven Quality Improvement
+
+고정된 TSLA 실제 뉴스 5-case development dataset으로 Prompt v1/v2/v3를 한 번씩 실행하고, 같은 dataset hash·모델 요청 ID·Production Validator를 유지한 채 prompt 변경만 비교했습니다. Attempt telemetry는 첫 생성과 재작성, validator 판정, latency와 API가 제공한 token usage를 기록하며, 별도 Human Review는 번역·사건 의미·근거 없는 주장처럼 자동 규칙만으로 확정할 수 없는 오류를 판정합니다.
+
+이 실험에서 v1은 4개 Case가 반복 검증 실패로 `unavailable`이 됐고, v2는 5개 모두 첫 시도에 validator를 통과했습니다. v2 사람 검수 결과는 승인 2건·수정 필요 3건이었고, v3의 최종 사용자 승인 AI 보조 검수는 `approved` 1건·`changes_required` 4건이었습니다. v3 Live Run은 당시 `news-analyzer-validator-v1`으로 실행됐으며, 현재 `news-analyzer-validator-v2`는 저장된 출력의 Offline 재검증과 재작성 통합 테스트를 통과했습니다. 이 검수는 독립적인 제3자 평가나 공식 정확도가 아니며, **Validator Pass Rate를 Semantic Accuracy로 보고하지 않습니다.** 세 실행 모두 draft development 진단으로만 취급합니다.
+
+- [Prompt v1/v2/v3 실험 기록](docs/experiment-log.md)
+- [실패 처리와 재작성 계약](docs/failure-handling.md)
+- [Evaluation v2 지표·Dataset·채점 경계](docs/evaluation_v2.md)
 
 ### 실제 모델 평가
 
@@ -390,6 +426,12 @@ Live 모드는 OpenAI API 호출 비용이 발생할 수 있습니다. Agent liv
 | `agent/financial_research_agent.py` | 제한된 3-tool Agent orchestration |
 | `evaluation/news_quality_eval.py` | 뉴스 정성 결과 자동 grader와 artifact 저장 |
 | `evaluation/agent_tool_eval.py` | Agent exact tool routing grader |
+| `evaluation/dataset_v2.py` | Evaluation v2 schema, validator, canonical hash와 run manifest |
+| `evaluation/attempt_telemetry.py` | opt-in attempt artifact, 분리 저장과 validator 신뢰성 지표 |
+| `evaluation/v2_grader.py` | exact 자동 채점과 사람 의미 검수 경계 |
+| `evaluation/v2_runner.py` | Dataset v2, Analyzer, telemetry, grader와 결과 artifact 연결 |
+| `validate_evaluation_dataset.py` | v2/legacy dataset 검증과 prepared manifest CLI |
+| `evaluate_news_quality_v2.py` | recorded 기본·live 명시 허용 Evaluation v2 CLI |
 
 ## 프로젝트 범위
 

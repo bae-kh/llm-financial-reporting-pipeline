@@ -1,0 +1,124 @@
+{
+  "schema_version": "1.0",
+  "dataset_id": "tsla-real-news-headlines-pilot",
+  "dataset_version": "2.0.0-draft.2",
+  "dataset_hash": "sha256:317c1f22fd3936c44d74b0b7c0c76ff7b81ccacf5762329e7593f908fc9abfde",
+  "model_id": "recorded-stub-contract-v1",
+  "cases": [
+    {
+      "case_id": "tsla_real_positive_robotaxi_clearance",
+      "attempts": [
+        {
+          "kind": "output",
+          "response_model_id": "recorded-stub-contract-v1",
+          "response_id": "stub_positive_1",
+          "output": {
+            "sentiment": "positive",
+            "score": 0.5,
+            "confidence": 70,
+            "summary": "제공된 제목은 TSLA 관련 소식을 전합니다.",
+            "key_topics": [
+              {
+                "topic": "TSLA 관련 제목",
+                "explanation": "제공된 제목의 범위만 분석 대상으로 삼았습니다.",
+                "supporting_article_ids": ["news_7fe6edf495148e62"]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "tsla_real_negative_china_recall",
+      "attempts": [
+        {
+          "kind": "output",
+          "response_model_id": "recorded-stub-contract-v1",
+          "response_id": "stub_negative_1",
+          "output": {
+            "sentiment": "negative",
+            "score": -0.5,
+            "confidence": 70,
+            "summary": "제공된 제목은 TSLA 관련 소식을 전합니다.",
+            "key_topics": [
+              {
+                "topic": "TSLA 관련 제목",
+                "explanation": "제공된 제목의 범위만 분석 대상으로 삼았습니다.",
+                "supporting_article_ids": ["news_b44bcbcbe64cfc3e"]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "tsla_real_mixed_revenue_stock_drop",
+      "attempts": [
+        {
+          "kind": "output",
+          "response_model_id": "recorded-stub-contract-v1",
+          "response_id": "stub_mixed_1",
+          "output": {
+            "sentiment": "neutral",
+            "score": 0.0,
+            "confidence": 70,
+            "summary": "제공된 제목은 TSLA 관련 소식을 전합니다.",
+            "key_topics": [
+              {
+                "topic": "TSLA 관련 제목",
+                "explanation": "제공된 제목의 범위만 분석 대상으로 삼았습니다.",
+                "supporting_article_ids": ["news_76784b21fee8484a"]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "tsla_real_insufficient_analyst_roundup",
+      "attempts": [
+        {
+          "kind": "output",
+          "response_model_id": "recorded-stub-contract-v1",
+          "response_id": "stub_ambiguous_1",
+          "output": {
+            "sentiment": "neutral",
+            "score": 0.0,
+            "confidence": 60,
+            "summary": "제공된 제목은 TSLA 관련 소식을 전합니다.",
+            "key_topics": [
+              {
+                "topic": "TSLA 관련 제목",
+                "explanation": "제공된 제목의 범위만 분석 대상으로 삼았습니다.",
+                "supporting_article_ids": ["news_e4bc2588c2f5fb70"]
+              }
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "case_id": "tsla_real_semantic_delivery_sites",
+      "attempts": [
+        {
+          "kind": "output",
+          "response_model_id": "recorded-stub-contract-v1",
+          "response_id": "stub_semantic_1",
+          "output": {
+            "sentiment": "positive",
+            "score": 0.5,
+            "confidence": 70,
+            "summary": "제공된 제목은 TSLA 관련 소식을 전합니다.",
+            "key_topics": [
+              {
+                "topic": "TSLA 관련 제목",
+                "explanation": "제공된 제목의 범위만 분석 대상으로 삼았습니다.",
+                "supporting_article_ids": ["news_0579a9e37d118dfa"]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  ]
+}
