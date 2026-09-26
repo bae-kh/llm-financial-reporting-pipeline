@@ -1,5 +1,6 @@
 """Prompt v3의 도메인 의미 보존 계약을 외부 API 없이 검증합니다."""
 
+import hashlib
 import json
 from datetime import datetime, timezone
 from pathlib import Path
@@ -59,6 +60,10 @@ def test_prompt_v3_base_rule_preserves_domain_semantics_without_gold_answers():
     prompt = NewsAnalyzer.SYSTEM_INSTRUCTIONS
 
     assert NewsAnalyzer.PROMPT_VERSION == "news-analyzer-prompt-v3"
+    assert prompt == NewsAnalyzer.PROMPT_V3_SYSTEM_INSTRUCTIONS
+    assert hashlib.sha256(prompt.encode("utf-8")).hexdigest() == (
+        "c89a81c67ba084f9519da289e994415aaa36a17c3b98a6934c83df2a2fac496e"
+    )
     assert "revenue as 매출" in prompt
     assert "profit as 이익" in prompt
     assert "net income as 순이익" in prompt

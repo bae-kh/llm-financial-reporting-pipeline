@@ -1,0 +1,112 @@
+{
+  "fixture_version": "1.0",
+  "prompt_version": "news-analyzer-prompt-v4",
+  "mode": "offline_prompt_contract",
+  "description": "타사 headline으로 Prompt v4 evidence 인용 계약을 점검하는 Offline fixture. LLM 출력 품질이나 semantic accuracy 결과가 아니다.",
+  "principles": [
+    "minimal_direct_evidence",
+    "no_weak_citation_padding",
+    "every_citation_supports_a_claim",
+    "every_factual_claim_has_cited_support",
+    "adjacent_keywords_are_insufficient",
+    "distinct_events_remain_separate",
+    "no_unsupported_details",
+    "uncertainty_state_is_preserved",
+    "narrow_or_omit_unsupported_topics"
+  ],
+  "cases": [
+    {
+      "case_id": "alphabet_single_direct_cloud_contract",
+      "ticker": "GOOGL",
+      "proposed_topic": "구글의 클라우드 계약 체결",
+      "headlines": [
+        {
+          "article_id": "news_0000000000000101",
+          "title": "Google signs five-year cloud contract with retailer",
+          "evidence_role": "direct"
+        },
+        {
+          "article_id": "news_0000000000000102",
+          "title": "Google shares rise as AI stocks rally",
+          "evidence_role": "weakly_related"
+        }
+      ],
+      "expected_contract": "직접 근거인 첫 기사 하나만 인용하고 주가 기사를 개수 채우기에 사용하지 않는다."
+    },
+    {
+      "case_id": "nvidia_distinct_product_revenue",
+      "ticker": "NVDA",
+      "proposed_topic": "엔비디아의 전 사업 매출 성장",
+      "headlines": [
+        {
+          "article_id": "news_0000000000000111",
+          "title": "Nvidia data-center revenue reaches a record",
+          "evidence_role": "direct_for_narrower_claim"
+        },
+        {
+          "article_id": "news_0000000000000112",
+          "title": "Nvidia gaming revenue falls 8%",
+          "evidence_role": "contradictory_distinct_product"
+        }
+      ],
+      "expected_contract": "서로 다른 제품 매출을 회사 전체의 단일 성장 추세로 합치지 않고 더 좁은 Topic으로 표현한다."
+    },
+    {
+      "case_id": "oracle_acquisition_talks",
+      "ticker": "ORCL",
+      "proposed_topic": "오라클의 인수 완료",
+      "headlines": [
+        {
+          "article_id": "news_0000000000000121",
+          "title": "Oracle reportedly in talks to acquire software startup",
+          "evidence_role": "direct_for_uncertain_state"
+        }
+      ],
+      "expected_contract": "reported talks를 인수 합의·발표·완료로 강화하지 않는다."
+    },
+    {
+      "case_id": "ibm_successor_without_name",
+      "ticker": "IBM",
+      "proposed_topic": "IBM 후임 CEO의 전략",
+      "headlines": [
+        {
+          "article_id": "news_0000000000000131",
+          "title": "IBM board begins search for its next chief executive",
+          "evidence_role": "direct_for_search_only"
+        }
+      ],
+      "expected_contract": "제목에 없는 인물 이름·선정 완료·전략·의도를 추가하지 않는다."
+    },
+    {
+      "case_id": "ford_battery_plant_plan",
+      "ticker": "F",
+      "proposed_topic": "포드의 배터리 공장 가동",
+      "headlines": [
+        {
+          "article_id": "news_0000000000000141",
+          "title": "Ford considers plan for a battery plant in Spain",
+          "evidence_role": "direct_for_possibility"
+        }
+      ],
+      "expected_contract": "considering a plan을 공장 가동이나 확정 투자로 강화하지 않는다."
+    },
+    {
+      "case_id": "amazon_analyst_roundup",
+      "ticker": "AMZN",
+      "proposed_topic": "아마존 투자의견 상향",
+      "headlines": [
+        {
+          "article_id": "news_0000000000000151",
+          "title": "Analyst upgrades and downgrades roundup: Amazon, IBM, Oracle",
+          "evidence_role": "direct_for_inclusion_only"
+        },
+        {
+          "article_id": "news_0000000000000152",
+          "title": "Amazon expands same-day delivery to more cities",
+          "evidence_role": "unrelated_to_rating_direction"
+        }
+      ],
+      "expected_contract": "아마존의 rating 방향을 확정하지 않고 roundup 포함이라는 더 좁은 Topic만 만든다."
+    }
+  ]
+}

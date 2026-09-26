@@ -53,6 +53,15 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     )
     parser.add_argument("--model", default=NewsAnalyzer.DEFAULT_MODEL)
     parser.add_argument(
+        "--prompt-version",
+        choices=tuple(sorted(NewsAnalyzer.SUPPORTED_PROMPT_VERSIONS)),
+        default=NewsAnalyzer.PROMPT_VERSION,
+        help=(
+            "평가 요청에 사용할 System Prompt 버전 "
+            "(기본값은 Production 기본 v3)"
+        ),
+    )
+    parser.add_argument(
         "--allow-live",
         action="store_true",
         help="실제 API 호출을 명시적으로 허용합니다. live mode에서만 사용합니다.",
@@ -90,6 +99,7 @@ async def run_eval(args: argparse.Namespace):
         model_id=args.model,
         api_key=api_key,
         allow_live=args.allow_live,
+        prompt_version=args.prompt_version,
         overwrite=args.overwrite,
     )
     logger.info("Eval run ID: %s", result.manifest.run_id)

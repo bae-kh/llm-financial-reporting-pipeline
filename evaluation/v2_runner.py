@@ -561,12 +561,14 @@ class EvaluationV2Runner:
                     analyzer = NewsAnalyzer(
                         client=client,
                         model=resolved_model,
+                        prompt_version=prompt_version,
                         attempt_telemetry_sink=collector,
                     )
                 else:
                     analyzer = NewsAnalyzer(
                         api_key=api_key,
                         model=resolved_model,
+                        prompt_version=prompt_version,
                         attempt_telemetry_sink=collector,
                     )
                 analysis = await analyzer.analyze(case_to_news_fetch_result(case))

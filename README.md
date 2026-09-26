@@ -1,227 +1,136 @@
-# LLM Financial Reporting Workflow
+# LLM Financial Reporting
 
-가격 데이터와 뉴스 메타데이터를 같은 기간으로 수집하고, **금융 수치는 Python**, **비정형 뉴스 해석은 LLM**에 맡긴 뒤, 검증된 결과만 Markdown 리포트로 만드는 금융 리포팅 자동화 프로젝트입니다.
+> Python으로 금융 지표를 결정론적으로 계산하고, headline 기반 LLM 뉴스 분석과 supporting evidence를 결합한 재현 가능한 금융 리포팅 파이프라인입니다.
 
-> 핵심은 LLM API 호출 자체가 아니라, deterministic software와 확률적인 LLM의 책임을 분리하고 외부 데이터·모델 실패를 validation, fallback, run tracking, eval로 통제한 것입니다.
+가격 계산, 외부 데이터 수집, LLM 생성, 검증·재작성, artifact 저장을 하나의 workflow로 연결했습니다. 핵심은 모든 작업을 LLM에 맡기는 것이 아니라, 정확성과 재현성이 필요한 영역은 Python으로 고정하고 비정형 뉴스 해석만 LLM에 제한하는 것입니다.
 
-이 저장소는 기존 자동매매 프로토타입에서 출발했지만 관련 코드를 별도 보관소로 완전히 분리했습니다. 현재 저장소에는 금융 리포팅 workflow와 이를 호출하는 제한된 Agent만 포함합니다. 구현 범위는 [프로젝트 범위](#프로젝트-범위)에서 설명합니다.
+연구·교육 목적의 프로젝트이며 투자 조언, 종목 추천 또는 자동 주문을 제공하지 않습니다.
 
-모든 결과는 연구·교육 목적이며 투자 조언, 종목 추천, 자동 주문 또는 미래 수익 보장을 제공하지 않습니다.
+![MSFT financial report dashboard](docs/assets/msft-financial-report-dashboard.png)
 
-## 한눈에 보기
+## Key Highlights
 
-| 구분 | 구현 내용 |
-|---|---|
-| 공통 기간 | 미국 동부 기준, 종료일을 포함하는 달력일 `AnalysisWindow` |
-| 가격 분석 | 기간 수익률, 연환산 변동성, MDD, RSI(14), MACD difference |
-| Benchmark | 대상 종목과 동일한 실제 거래일의 SPY 수익률 비교 |
-| 뉴스 수집 | Google News RSS 날짜 분할, 100건 포화 구간 재분할, 기간 필터, 중복 제거 |
-| LLM 입력 통제 | 종목 관련성·prompt injection 필터, 날짜 균형 70% + 중요도 30% 선택 |
-| LLM 출력 통제 | Structured Outputs, evidence ID, 제한된 deterministic event/phrase, 혼합 감성·금지 주장 검증 |
-| 실패 처리 | 최대 2회 재작성, 최종 실패 시 `unavailable`, 정량 보고서는 가능한 범위에서 계속 |
-| 추적 가능성 | Markdown, 뉴스 Snapshot, 단계별 Run metadata를 `run_id`로 연결 |
-| 선택적 Agent | 기존 workflow를 호출하는 제한된 3-tool interface, 주문·추천 요청 차단 |
+- Python으로 기간 수익률, 연환산 변동성, MDD, RSI(14), MACD difference 계산
+- 대상 종목과 동일한 실제 거래일 기준 SPY benchmark 비교
+- Google News RSS headline metadata 수집, 기간 필터, 중복·저정보성 페이지 제거
+- 날짜 균형과 사건 중요도를 결합해 최대 60개 headline 선택
+- OpenAI Structured Output으로 Summary, sentiment, Topic, supporting article ID 생성
+- Pydantic·allow-list·제한된 사건 규칙 검증과 최대 2회 재작성 후 fail-closed fallback
+- Markdown·News Snapshot·RunMetadata와 오프라인 정적 HTML 리포트 생성
 
-## 검증 결과
+## Why this architecture?
 
-2026-09-24 기준 현재 로컬 작업 트리에서 확인한 결과입니다. Live 항목은 저장된 실험 결과이며 이번 문서화 작업에서는 API를 다시 호출하지 않았습니다.
-
-| 검증 | 결과 | 해석 범위 |
-|---|---:|---|
-| 전체 pytest | **235 passed** | 현재 금융 리포팅 workflow, Agent, eval 및 Evaluation v2 Runner/Grader 전체 회귀 테스트 |
-| Live 뉴스 품질 eval | **6 / 6** | `gpt-4o-mini`, 제한된 합성 headline 6개 case, 1회 실행 |
-| Live Agent routing eval | **4 / 4** | 실제 모델의 도구 선택, side-effect-free stub tool 사용 |
-| 실제 TSLA end-to-end | **완료** | yfinance + Google News RSS + OpenAI Responses API + artifact 저장 |
-
-`recorded` 평가는 평가 코드와 고정 기준선의 회귀를 확인하며 현재 live 모델 품질을 증명하지 않습니다. Live eval도 모든 실제 뉴스 분포와 의미 오류를 보장하지 않으므로 사람 검토가 필요합니다.
-
-## 문제 정의
-
-단순한 LLM 리포트 생성에는 다음 문제가 있었습니다.
-
-- 가격과 뉴스가 서로 다른 기간을 사용할 수 있음
-- 정확해야 하는 금융 계산이 LLM 응답에 의존할 수 있음
-- 긴 기간의 뉴스가 최신 기사 위주로 잘릴 수 있음
-- 검색 결과의 다른 종목 뉴스와 명령형 문자열이 LLM 입력에 섞일 수 있음
-- schema가 맞아도 사건 의미나 인용 근거가 틀릴 수 있음
-- API 실패와 실제 중립 분석이 같은 값으로 보일 수 있음
-- 결과 파일만으로 어느 단계가 실패했는지 추적하기 어려움
-
-이 프로젝트는 이를 하나의 reporting workflow로 분해하고 각 단계의 계약과 실패 정책을 코드로 명시합니다.
-
-## 아키텍처
-
-```text
-사용자 / 공식 CLI / 선택적 Financial Research Agent
-                         │
-                         ▼
-                  AnalysisWindow
-        ticker + inclusive calendar dates + timezone
-                         │
-                         ▼
-             1. PriceFetcher + SPY
-                         │
-                         ▼
-          MarketAnalyzer (deterministic)
-                         │
-                         ▼
-             2. NewsFetcher + Snapshot
-                         │
-                         ▼
-        HeadlinePolicy + NewsAnalyzer
-     select + Structured Output + validation + retry
-                         │
-                         ▼
-                    ReportBuilder
-                         │
-                         ▼
-       Markdown Report + News Snapshot + Run Metadata
-```
-
-가격과 뉴스는 하나의 `AnalysisWindow`를 공유하며, 현재 workflow는 필수 시장 분석 후 선택적 뉴스 분석을 순차적으로 수행합니다. Agent도 금융 계산을 직접 수행하지 않고 동일한 workflow를 호출하는 제한된 Tool Calling interface입니다.
-
-자세한 책임 경계와 실패 상태는 [Architecture and Failure Policy](docs/architecture.md)에서 확인할 수 있습니다.
-
-## 핵심 설계 결정
-
-### 1. 달력일과 거래일을 분리
-
-`analysis_days=30`은 종료일을 포함하는 30개 **달력일**입니다.
-
-```text
-종료일: 2024-12-31
-시작일: 2024-12-02
-요청 기간: 30개 달력일
-실제 TSLA 가격: 21개 거래일
-```
-
-가격과 뉴스는 같은 요청 기간을 사용하되, 리포트에는 휴장일을 제외한 실제 가격 범위를 별도로 표시합니다.
-
-### 2. Warm-up은 지표 계산에만 사용
-
-가격 수집 시 분석 시작일 이전 90개 달력일을 추가로 가져옵니다. 기간 수익률·변동성·MDD는 요청 구간만 사용하고, RSI·MACD는 이전 가격 흐름을 이어받아 분석 종료일의 최신 값을 계산합니다.
-
-`yfinance`의 `end`가 미포함이라는 점을 처리하고, 제공자가 종료일 이후 값을 반환해도 미래 데이터가 지표에 들어가지 않도록 다시 제한합니다.
-
-### 3. 숫자는 Python, 해석은 LLM
-
-`MarketAnalyzer`가 다음 값을 계산합니다.
-
-- 기간 수익률
-- 일별 수익률 표준편차 기반 연환산 변동성
-- 이전 고점 대비 최대 낙폭(MDD)
-- RSI(14)
-- MACD difference(12, 26, 9)
-- 동일 실제 거래일의 SPY 수익률과 단순 차이
-
-LLM은 이 숫자를 보거나 다시 계산하지 않습니다. 선택된 뉴스 제목 메타데이터에서 전체적인 정성 방향, 요약, 주요 이슈와 근거 ID만 생성합니다.
-
-### 4. 뉴스 수집 범위와 LLM 입력 범위를 분리
-
-Google News RSS는 한 요청에서 약 100건에 도달할 수 있습니다. 기본 30일 단위로 조회하고, 100건에 도달한 구간은 최소 하루까지 다시 나눕니다. 조회 실패·포화·요청 한도·기간 밖 항목·중복·잘못된 metadata 수를 각각 기록합니다.
-
-수집 결과는 먼저 JSON Snapshot으로 보존합니다. 그 후 `HeadlinePolicy`가 다음 항목을 검사합니다.
-
-- 제목에 ticker 또는 등록된 회사명 alias가 있는가
-- 제목·출처에 `ignore previous instructions` 같은 명령형 공격 패턴이 있는가
-
-필터를 통과한 기사가 60건을 넘으면 다음 전략으로 최대 60건을 선택합니다.
-
-```text
-날짜 균형 70% + 전 기간 중요도 30%
-```
-
-중요도는 실적, 가이던스, 인수·합병, 규제·리콜, 생산·인도량 같은 **기업 사건 우선순위**입니다. 감성 방향, 언론사 신뢰도 또는 사실 검증 점수가 아닙니다.
-
-### 5. 형식 검증 뒤에 의미 검증을 추가
-
-OpenAI Structured Outputs와 Pydantic schema로 다음 형식을 제한합니다.
-
-```text
-sentiment: positive | neutral | negative
-score: -1.0 ~ 1.0
-confidence: 0 ~ 100
-summary: Korean text
-key_topics: topic + explanation + supporting_article_ids
-```
-
-형식이 맞더라도 다음 위반은 Python에서 거부합니다.
-
-- 선택되지 않은 `article_id` 인용
-- `vehicle delivery report`를 `실적 보고서`로 바꾸는 사건 의미 변경
-- `sales`를 근거 없이 `매출`로 확장
-- 제목에 없는 미래 주가 전망과 인과관계
-- 투자자 반응 추론과 매수·매도 권유
-- 상반된 방향의 기사 묶음을 과도한 positive/negative로 분류
-
-검증 실패 사유를 누적해 최대 두 번 재작성합니다. 세 번째 결과도 실패하면 정성 분석을 공개하지 않고 `validation_error`와 `unavailable`을 기록합니다.
-
-### 6. 중립과 실패를 구분
-
-정상적인 중립 분석:
-
-```text
-available=true
-sentiment=neutral
-score=0.0
-```
-
-뉴스 부재, API 키 누락, 모델 호출 또는 검증 실패:
-
-```text
-available=false
-sentiment=None
-score=None
-fallback_used=true
-error_code=...
-```
-
-분석 실패를 임의의 중립값으로 위장하지 않습니다.
-
-### 7. 결과뿐 아니라 실행 과정도 저장
-
-한 번의 실행에서 생성된 세 artifact를 같은 `run_id`로 연결합니다.
-
-| Artifact | 기본 경로 | 역할 |
+| 책임 | 구현 | 이유 |
 |---|---|---|
-| Markdown | `reports/generated/report_*.md` | 사람이 읽는 최종 리포트 |
-| News Snapshot | `reports/generated/news_snapshots/news_*.json` | 수집된 원본 뉴스 metadata |
-| Run Metadata | `reports/generated/run_metadata/run_*.json` | 단계별 상태·시간·오류·경고·파일 경로 |
+| Financial metrics | Deterministic Python | 같은 입력에서 같은 계산 결과를 재현하고 단위 테스트로 검증 |
+| Qualitative news interpretation | LLM | 여러 headline의 비정형 사건과 방향을 구조화된 텍스트로 요약 |
+| Validation, policy, evidence | Deterministic checks | 허용되지 않은 ID, 제한된 사건 의미 변경, 금지 표현과 실패 상태를 코드로 통제 |
 
-Snapshot, Markdown, Run metadata와 eval 결과는 임시 파일을 완전히 기록한 뒤 `os.replace`로 교체합니다. 기본값은 기존 파일 덮어쓰기를 거부합니다.
+LLM은 가격 지표를 계산하지 않습니다. Python validator도 일반적인 자연어 entailment를 완전히 판단한다고 가정하지 않습니다. 각 컴포넌트가 잘할 수 있는 범위를 분리하고, 자동 검증과 Human Review를 별도 상태로 기록합니다.
 
-## 실제 실행 예시
+## Architecture
 
-다음 조건으로 실제 외부 데이터와 OpenAI API를 연결해 검증했습니다.
-
-```text
-Ticker: TSLA
-분석 기간: 2024-12-02 ~ 2024-12-31
-가격 관측: 21개 거래일
-기간 수익률: 13.09%
-연환산 변동성: 67.19%
-MDD: -15.84%
-SPY 수익률: -2.58%
-뉴스: 19건 저장 → 관련성 필터 후 14건 분석
-LLM 결과: neutral, score 0.01, confidence 70
-검증: 첫 초안의 미근거 주가 전망을 거부하고 1회 재작성
-Run status: completed_with_warnings
+```mermaid
+flowchart TD
+    A[Ticker + analysis period] --> B[AnalysisWindow]
+    B --> C[PriceFetcher: target + SPY]
+    C --> D[MarketAnalyzer: deterministic metrics]
+    D --> E[Google News RSS collection]
+    E --> F[Date filter + deduplication + low-information filter]
+    F --> G[Time-balanced + importance selection, max 60]
+    G --> H[NewsAnalyzer: Structured Output]
+    H --> I[Pydantic + Evidence ID + limited policy validation]
+    I -->|pass| J[ReportBuilder]
+    I -->|validation failure| K[Rewrite, max 2]
+    K --> H
+    I -->|final failure| L[unavailable + fallback]
+    J --> M[Markdown + Snapshot + RunMetadata]
+    L --> M
+    M --> N[Offline static HTML]
 ```
 
-`completed_with_warnings`는 실패가 아니라 RSS coverage 한계, 제외 기사, 재작성 같은 제한을 숨기지 않은 성공 상태입니다.
+시장 분석은 필수 단계이고 뉴스·LLM 분석은 부분 실패가 가능한 선택 단계입니다. 세부 책임과 실패 경계는 [Architecture](docs/architecture.md)와 [Failure Handling](docs/failure-handling.md)에 정리했습니다.
 
-공개 가능한 artifact 예시는 다음에서 확인할 수 있습니다.
+## Example Output
 
-- [실제 OpenAI 연결 end-to-end 리포트](reports/samples/TSLA_2024-12_live_llm_sample.md)
-- [실제 외부 가격·뉴스 + missing API key fallback 리포트](reports/samples/TSLA_2024-12_no_llm_sample.md)
-- [Recorded eval baseline](reports/samples/recorded_eval_baseline.md)
-- [Sample artifact 설명](reports/samples/README.md)
+정적 HTML은 저장된 Markdown, News Snapshot, RunMetadata만 읽으며 외부 API를 다시 호출하지 않습니다.
 
-## 빠른 시작
+- KPI와 benchmark는 Python 계산 결과입니다.
+- 각 LLM Topic은 Snapshot의 supporting headline과 연결됩니다.
+- `ID validated`는 ID가 선택 입력/Snapshot에 존재한다는 뜻이며 의미적 근거 적합성을 보장하지 않습니다.
+- Human Review 상태와 자동 검증 상태를 분리해 표시합니다.
 
-### 1. 환경 구성
+대표 화면은 `1920×1080` 첫 viewport를 기준으로 하며 Hero, KPI, benchmark, LLM Summary와 첫 Topic 일부가 보이도록 구성했습니다.
 
-Windows PowerShell 기준:
+## Validation & Failure Handling
+
+LLM 출력은 다음 순서로 처리합니다.
+
+1. OpenAI Structured Output parsing
+2. Pydantic schema 검증
+3. 선택된 supporting article ID allow-list 검증
+4. 차량 인도 거점·인도 대수·리콜 등 제한된 사건 grounding 규칙
+5. 금지 표현과 일부 headline 정책 검사
+6. 검증 실패 시 오류 사유를 전달해 최대 2회 재작성
+7. 세 번째 결과도 실패하면 `available=false`, `unavailable`, `fallback_used=true`
+
+뉴스 부재·API 오류·검증 실패는 정상적인 `neutral` 분석과 구분됩니다. 명백한 옵션 계약 목록, 커뮤니티 계약 페이지, 순수 차트·시세 페이지는 LLM 입력 전에 보수적으로 제외합니다.
+
+현재 validator는 제한된 deterministic rule set입니다. 일반적인 Topic-level evidence relevance, 번역 뉘앙스, 인과관계와 unsupported claim 전체를 보장하지 않습니다.
+
+## Evaluation & Experiments
+
+Evaluation v2는 Dataset version/hash, attempt telemetry, case별 grading, validator reliability와 Human Review 자료를 같은 `eval_run_id`로 연결합니다. Validator pass rate와 semantic accuracy는 별도 지표로 취급합니다.
+
+주요 검증 기록:
+
+- TSLA 실제 headline 5개 development dataset과 별도 legacy synthetic 6-case 유지
+- First-pass·Final-pass validator pass, Rewrite Rescue, Attempt 수, Unavailable Rate 집계 기반 구현
+- Prompt v3·Validator v2 조합으로 MSFT와 AAPL Live E2E를 각각 1회 실행하고 저장 artifact를 Offline 품질 감사
+- Prompt v3/v4를 MSFT·AAPL의 동일한 재구성 60-headline 입력과 동일 validator로 비교
+- 고정 Snapshot 비교 4개 case에서 총 11회 generation attempt 기록
+- MSFT는 v3·v4 모두 `unavailable`, AAPL은 v3·v4 모두 `available`
+- AAPL v4에서 동일 buyback headline 중복 인용이 사라진 사례를 관찰했지만, unrelated evidence와 unsupported claim 후보는 남음
+
+이 결과는 development diagnostic입니다. Prompt v4의 일반화된 성능 향상이나 공식 semantic accuracy를 의미하지 않습니다. Production 기본값은 Prompt v3이며 v4는 experimental opt-in으로 보존합니다.
+
+- [Evaluation v2 설계와 채점 경계](docs/evaluation_v2.md)
+- [Prompt v3/v4 고정 Snapshot 비교](docs/prompt-v3-v4-fixed-snapshot-comparison.md)
+- [실험 기록](docs/experiment-log.md)
+- [MSFT E2E 품질 감사](docs/msft-e2e-quality-audit.md)
+- [저정보성 페이지 필터 후속 검증](docs/msft-e2e-low-information-filter-followup.md)
+
+## Limitations
+
+- 기사 본문이 아니라 headline·발행일·출처 metadata만 분석합니다.
+- Google News RSS의 전체 언론사 coverage와 완전 수집을 보장하지 않습니다.
+- Supporting ID validity는 Topic의 semantic evidence correctness가 아닙니다.
+- Model confidence는 uncalibrated self-report이며 실제 정확도 확률이 아닙니다.
+- Prompt와 validator는 모든 의미·번역·인과관계 오류를 탐지하지 못합니다.
+- 일부 Production 경로는 선택된 60개 ID 전체를 별도 artifact로 직접 저장하지 않습니다.
+- 출력은 투자 판단이나 자동 거래에 사용하기 위한 시스템이 아닙니다.
+
+자세한 범위는 [Limitations and Disclaimer](docs/limitations.md)를 참고하세요.
+
+## Project Structure
+
+```text
+analysis/       금융 지표, headline policy, LLM 분석·검증·재작성
+data_pipeline/  yfinance 가격과 Google News RSS 수집
+workflow/       분석 기간, 전체 orchestration, Snapshot·RunMetadata
+report/         Markdown 및 정적 HTML 생성
+agent/          기존 workflow를 호출하는 제한된 3-tool interface
+evaluation/     Dataset v2, telemetry, runner, grader, 고정 Snapshot 비교
+evals/          평가 schema, dataset, fixture, template
+tests/          unit·integration·offline regression tests
+docs/           설계, 실험, 감사, Human Review 기록
+```
+
+## Quick Start
+
+Python 3.11 이상을 권장하며 현재 의존성과 전체 테스트는 Python 3.13.9에서 확인했습니다.
+
+### 1. 설치
 
 ```powershell
 git clone https://github.com/bae-kh/llm-financial-reporting-pipeline.git
@@ -230,255 +139,65 @@ cd llm-financial-reporting-pipeline
 python -m venv venv
 .\venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+pip install -r requirements-dev.txt
+pip install ruff==0.12.0
 Copy-Item .env.example .env
 ```
 
-Python 3.11 이상을 권장하며, 공개된 고정 의존성과 테스트는 Python 3.13.9에서 최종 검증했습니다.
-
-새 메인 workflow가 실제로 요구하는 비밀값은 LLM 분석용 `OPENAI_API_KEY`입니다. 키가 없어도 가격·뉴스 수집과 정량 리포트는 실행되며 LLM 단계만 `missing_api_key`로 기록됩니다.
+`.env`의 다음 값은 Live LLM 분석에만 필요합니다. 실제 키는 Git에 추가하지 않습니다.
 
 ```dotenv
 OPENAI_API_KEY=your_api_key_here
 ```
 
-`.env`, DB, 원본 데이터, 생성 리포트는 Git 대상에서 제외되어 있습니다.
-
-### 2. 재현 가능한 리포트 실행
+### 2. 금융 리포트 생성
 
 ```powershell
-python .\generate_report.py --ticker TSLA --analysis-days 30 --as-of-date 2024-12-31
+python .\generate_report.py --ticker MSFT --analysis-days 30 --as-of-date 2026-09-18
 ```
 
-최근 미국 동부 날짜를 종료일로 사용하려면 `--as-of-date`를 생략합니다.
+기본 출력은 Git에서 제외된 `reports/generated/`에 저장됩니다. 실제 yfinance, Google News RSS와 OpenAI를 사용하므로 네트워크와 API 비용이 발생할 수 있습니다.
+
+### 3. 저장 artifact를 정적 HTML로 변환
 
 ```powershell
-python .\generate_report.py --ticker TSLA --analysis-days 30
+$metadata = Get-ChildItem .\reports\generated\run_metadata\run_*.json |
+  Sort-Object LastWriteTime -Descending |
+  Select-Object -First 1
+
+python .\generate_static_html_report.py --metadata $metadata.FullName
 ```
 
-시스템 날짜가 데이터 제공자가 지원하는 최신 날짜보다 앞서 있으면 가격이 없을 수 있습니다. 이때는 실제 과거 거래일이 포함되도록 `--as-of-date`를 지정합니다.
+HTML 변환은 저장 artifact만 읽으며 OpenAI, yfinance, RSS를 호출하지 않습니다. Prompt·Validator·Human Review provenance는 선택적 `--context` JSON이 있을 때만 표시됩니다.
 
-PowerShell에서 여러 줄 명령을 사용할 때 연결 문자는 역슬래시(`\`)가 아니라 백틱입니다. 가장 안전한 방법은 위 예시처럼 한 줄로 실행하는 것입니다.
-
-### 3. 출력 경로 지정
+### 4. 테스트와 정적 검사
 
 ```powershell
-python .\generate_report.py --ticker TSLA --analysis-days 30 --output reports/generated/latest_TSLA.md
-```
-
-기존 경로를 명시적으로 교체할 때만 `--overwrite`를 추가합니다.
-
-## 선택적 Financial Research Agent
-
-Agent는 자연어 요청을 이미 검증된 application tool로 연결하는 얇은 orchestration 계층입니다. 금융 계산을 직접 수행하지 않습니다.
-
-```powershell
-python .\run_financial_agent.py "TSLA를 2024-12-31 기준 최근 30일로 분석해서 리포트를 만들어줘"
-```
-
-허용 도구:
-
-| 도구 | 역할 |
-|---|---|
-| `create_financial_report` | 지정 기간의 검증된 workflow 실행 |
-| `inspect_report_run` | `run_id`로 이전 실행 상태 조회 |
-| `explain_financial_metric` | 프로젝트 지표의 의미와 주의점 설명 |
-
-안전 경계:
-
-- 주문·종목 추천 요청은 도구 실행 전에 Python policy로 차단
-- 주문 도구 자체를 정의하지 않음
-- 최대 tool call 3회, 최대 turn 4회
-- 병렬 tool call 비활성화
-- Pydantic schema로 tool argument 검증
-- Agent 최종 답변의 주문·추천 표현 추가 검사
-
-## 테스트와 평가
-
-### 전체 자동 테스트
-
-```powershell
-pip install -r requirements-dev.txt
 python -m pytest -q
+python -m ruff check .
+git diff --check
 ```
 
-현재 결과:
+현재 로컬 검증 결과:
 
 ```text
-235 passed
+pytest: 272 passed
+Ruff: passed
+git diff --check: passed
 ```
 
-테스트는 실제 yfinance·OpenAI 호출 대신 fake provider와 stub client를 주입해 반복 가능하게 실행합니다. 주요 범위는 다음과 같습니다.
+자동 테스트는 fake provider와 stub client를 사용하므로 OpenAI·yfinance·RSS를 호출하지 않습니다.
 
-- 달력일 포함 규칙과 미국 동부 기준일
-- yfinance `end` 미포함, warm-up, 미래 데이터 제외
-- 알려진 수익률·변동성·MDD 공식
-- 대상 종목 필수 실패와 선택적 SPY 실패 분리
-- RSS timeout·network·XML·빈 결과 상태 구분
-- 100건 포화 구간 재분할과 요청 안전 한도
-- 기간 필터, 중복 제거, 원자적 Snapshot 저장
-- ticker·회사명 관련성 및 prompt injection 필터
-- 날짜 균형·사건 중요도 결합 선택
-- LLM schema·evidence ID·사건 의미·금지 주장 검증
-- 검증 실패 재작성과 최종 fail-closed
-- 실제 중립과 `unavailable` fallback 구분
-- Markdown escaping, 원자적 저장, 덮어쓰기 정책
-- 단계별 상태·latency·error와 downstream `skipped`
-- Agent tool loop, tool 한도, 주문·추천 거절
-- 뉴스 품질 및 Agent routing grader
+## Optional Agent Interface
 
-### 비용 없는 recorded 회귀 평가
+`agent/financial_research_agent.py`는 이미 검증된 workflow를 호출하는 제한된 Tool Calling 계층입니다. 금융 계산을 직접 수행하지 않으며 주문·종목 추천 도구를 제공하지 않습니다.
 
 ```powershell
-python .\evaluate_news_quality.py --mode recorded
-python .\evaluate_agent_tools.py --mode recorded
+python .\run_financial_agent.py "MSFT를 2026-09-18 기준 최근 30일로 분석해서 리포트를 만들어줘"
 ```
 
-### Evaluation v2 데이터셋 검증
-
-Evaluation v2 1단계는 실제 모델을 호출하지 않고 데이터 계약, legacy 6개 case 호환성, dataset hash와 실행 전 manifest를 검증합니다.
-
-```powershell
-python .\validate_evaluation_dataset.py `
-  .\evals\templates\news_quality_real_development_v2.template.json
-```
-
-설계한 지표의 분모, human review 경계, 실제 뉴스 작성 절차와 holdout 운영 규칙은 [Evaluation v2 설계](docs/evaluation_v2.md)를 참고하세요. 기존 6개 synthetic case는 `legacy_synthetic/legacy` track으로 유지하며 실제 뉴스나 새 adversarial dataset의 정확도에 합산하지 않습니다.
-
-### Evaluation v2 Attempt telemetry
-
-시도별 전체 출력은 기본적으로 수집하지 않습니다. 평가 코드가 `AttemptTelemetryCollector(enabled=True)`를 `NewsAnalyzer`에 명시적으로 주입하고 `AttemptTelemetryArtifactStore.save()`를 호출한 경우에만 `reports/generated/evals/attempts/` 아래 별도 JSON artifact로 저장됩니다. 일반 `RunMetadata`, 운영 로그와 최종 `NewsAnalysis`에는 실패 초안이나 전체 출력이 추가되지 않습니다.
-
-수집된 attempt로 First-pass/Final-pass Validator Pass Rate, Rewrite Rescue Rate, 평균 attempt 수와 Final Unavailable Rate를 계산할 수 있습니다. 이 값들은 production validator 동작 지표이며 실제 의미 정확도나 품질 개선률이 아닙니다. 자세한 활성화 예시와 분모 정의는 [Evaluation v2 설계](docs/evaluation_v2.md#9-attempt-level-telemetry)를 참고하세요.
-
-### Evaluation v2 Runner / Grader
-
-기본 실행은 외부 API를 사용하지 않는 recorded mode입니다. 아래 fixture는 모델 출력 baseline이 아니라 Dataset→Analyzer→Telemetry→Grader→artifact 연결을 확인하는 수동 stub입니다.
-
-```powershell
-python .\evaluate_news_quality_v2.py `
-  --dataset .\evals\datasets\news\real\development\tsla_headlines_pilot_v2.json `
-  --recorded-responses .\evals\fixtures\news_quality_v2_recorded_smoke.json
-```
-
-결과는 git에서 제외된 `reports/generated/evals/v2/<eval_run_id>/`에 저장됩니다. 현재 pilot 5건은 모두 draft development case이므로 결과가 항상 `development_diagnostic`, `official_performance_eligible=false`, `semantic_accuracy_evaluated=false`로 표시됩니다. expected/forbidden claim, semantic distortion, unsupported claim과 validator false acceptance/rejection은 `human_review.md`에서 사람이 검수합니다.
-
-향후 live 실행은 `--mode live --allow-live --model <exact-model-id>`와 `OPENAI_API_KEY`가 모두 있어야만 활성화됩니다. 자세한 artifact·채점 경계는 [Evaluation v2 설계](docs/evaluation_v2.md#10-evaluation-v2-runner와-grader)를 참고하세요.
-
-### Evaluation-driven Quality Improvement
-
-고정된 TSLA 실제 뉴스 5-case development dataset으로 Prompt v1/v2/v3를 한 번씩 실행하고, 같은 dataset hash·모델 요청 ID·Production Validator를 유지한 채 prompt 변경만 비교했습니다. Attempt telemetry는 첫 생성과 재작성, validator 판정, latency와 API가 제공한 token usage를 기록하며, 별도 Human Review는 번역·사건 의미·근거 없는 주장처럼 자동 규칙만으로 확정할 수 없는 오류를 판정합니다.
-
-이 실험에서 v1은 4개 Case가 반복 검증 실패로 `unavailable`이 됐고, v2는 5개 모두 첫 시도에 validator를 통과했습니다. v2 사람 검수 결과는 승인 2건·수정 필요 3건이었고, v3의 최종 사용자 승인 AI 보조 검수는 `approved` 1건·`changes_required` 4건이었습니다. v3 Live Run은 당시 `news-analyzer-validator-v1`으로 실행됐으며, 현재 `news-analyzer-validator-v2`는 저장된 출력의 Offline 재검증과 재작성 통합 테스트를 통과했습니다. 이 검수는 독립적인 제3자 평가나 공식 정확도가 아니며, **Validator Pass Rate를 Semantic Accuracy로 보고하지 않습니다.** 세 실행 모두 draft development 진단으로만 취급합니다.
-
-- [Prompt v1/v2/v3 실험 기록](docs/experiment-log.md)
-- [실패 처리와 재작성 계약](docs/failure-handling.md)
-- [Evaluation v2 지표·Dataset·채점 경계](docs/evaluation_v2.md)
-
-### 실제 모델 평가
-
-```powershell
-python .\evaluate_news_quality.py --mode live --model gpt-4o-mini
-python .\evaluate_agent_tools.py --mode live --model gpt-4o-mini
-```
-
-Live 모드는 OpenAI API 호출 비용이 발생할 수 있습니다. Agent live eval은 실제 모델의 routing을 검사하되 파일 생성 같은 부작용을 막기 위해 stub tool을 사용합니다.
-
-뉴스 eval case:
-
-1. 실적 개선과 가이던스 상향
-2. 제품 리콜과 규제 조사
-3. 긍정·부정 방향 혼합
-4. headline prompt injection
-5. 다른 종목 검색 노이즈
-6. 차량 인도량과 실적 의미 구분
-
-## 실패 정책
-
-| 실패 지점 | 전체 결과 | 기록 방식 |
-|---|---|---|
-| 대상 종목 가격 수집·시장 분석 | 실패 | failed run metadata, downstream `skipped` |
-| SPY 수집 | 계속 | `benchmark_status=unavailable` 또는 `insufficient_data` |
-| 뉴스 수집 | 계속 | `news_status=unavailable`, 정량 리포트 유지 |
-| 뉴스 Snapshot 저장 | 계속 | snapshot stage `failed`, 경고와 null path |
-| API key 누락 | 계속 | `missing_api_key`, LLM 결과 N/A |
-| LLM 호출 실패 | 계속 | `llm_error`, LLM 결과 N/A |
-| LLM 검증 최종 실패 | 계속 | `validation_error`, 잘못된 정성 결과 비공개 |
-| Markdown 구성·저장 | 실패 | failed run metadata |
-| Run metadata 저장 | 실패 | 실행 추적 필수 조건으로 전체 실패 |
-
-## 주요 코드
-
-| 파일 | 책임 |
-|---|---|
-| `workflow/analysis_window.py` | 가격과 뉴스가 공유하는 포함 달력일 계약 |
-| `data_pipeline/price_fetcher.py` | yfinance 원본 일봉과 지표 warm-up 수집 |
-| `analysis/market_analyzer.py` | 결정론적 시장 지표 계산 |
-| `workflow/reporting_pipeline.py` | 필수 target·선택 SPY orchestration |
-| `data_pipeline/news_fetcher.py` | 구간 분할 RSS 수집, 검증, 기간 필터, 중복 제거 |
-| `workflow/news_snapshot.py` | 수집 뉴스 JSON 원자적 저장 |
-| `analysis/headline_policy.py` | 종목 관련성, 명령형 입력, 방향 힌트, 사건 의미 policy |
-| `analysis/news_analyzer.py` | 기사 선택, Structured Output, 검증과 재작성 |
-| `report/report_builder.py` | 검증 결과를 고정 Markdown 구조로 조립 |
-| `workflow/report_artifact.py` | Markdown 원자적 저장과 덮어쓰기 통제 |
-| `workflow/financial_reporting_workflow.py` | 전체 단계와 필수·선택 실패 정책 |
-| `workflow/run_tracking.py` | run_id, 단계별 상태·시간·오류·artifact JSON |
-| `generate_report.py` | 공식 금융 리포팅 CLI |
-| `agent/financial_research_agent.py` | 제한된 3-tool Agent orchestration |
-| `evaluation/news_quality_eval.py` | 뉴스 정성 결과 자동 grader와 artifact 저장 |
-| `evaluation/agent_tool_eval.py` | Agent exact tool routing grader |
-| `evaluation/dataset_v2.py` | Evaluation v2 schema, validator, canonical hash와 run manifest |
-| `evaluation/attempt_telemetry.py` | opt-in attempt artifact, 분리 저장과 validator 신뢰성 지표 |
-| `evaluation/v2_grader.py` | exact 자동 채점과 사람 의미 검수 경계 |
-| `evaluation/v2_runner.py` | Dataset v2, Analyzer, telemetry, grader와 결과 artifact 연결 |
-| `validate_evaluation_dataset.py` | v2/legacy dataset 검증과 prepared manifest CLI |
-| `evaluate_news_quality_v2.py` | recorded 기본·live 명시 허용 Evaluation v2 CLI |
-
-## 프로젝트 범위
-
-이 저장소의 공식 포트폴리오 범위:
-
-- `generate_report.py`
-- `workflow/`
-- `analysis/`
-- 구조화된 `data_pipeline/` 경로
-- `report/report_builder.py`
-- `agent/`
-- `evaluation/`, `evals/`
-
-다음 기능은 의도적으로 포함하지 않습니다.
-
-- 자동 주문과 증권사 API 연동
-- 매수·매도 추천과 거래 전략
-- 백테스트·포트폴리오 수익 시뮬레이션
-- Streamlit 거래 dashboard, 거래 DB, Telegram 알림
-
-전환 전 실험은 이 저장소 밖의 별도 보관소로 이동했습니다. 현재 소스와 테스트에는 해당 모듈의 import나 호환 실행 경로가 없습니다.
-
-## 현재 한계
-
-- Google News RSS의 전체 언론사 coverage와 완전 수집을 보장하지 않음
-- 기사 본문이 아닌 headline·발행 시각·출처 metadata만 분석
-- 의미가 비슷하지만 제목이 다른 기사는 중복으로 남을 수 있음
-- 등록되지 않은 회사 alias만 포함된 관련 기사는 보수적 필터에서 제외될 수 있음
-- 중요도와 방향 힌트는 키워드 규칙이며 기사 진위·언론사 신뢰도를 평가하지 않음
-- 30일보다 긴 기간도 하나의 종합 감성으로 압축하므로 시간에 따른 방향 변화가 줄어듦
-- Structured Outputs와 deterministic guardrail도 모든 의미·번역 오류를 보장하지 않음
-- 인증, 사용자 권한, 스케줄러, 중앙 로그, Kubernetes 배포는 구현 범위가 아님
-- Run metadata는 로컬 JSON이며 분산 tracing system이 아님
-
-자세한 내용은 [Limitations and Disclaimer](docs/limitations.md)를 참고하세요.
-
-## 이 프로젝트가 보여주는 것
-
-- 반복 업무를 수집·분석·검증·보고 단계로 구조화하는 능력
-- 정확한 계산과 생성형 모델의 책임 경계를 설정하는 능력
-- 외부 API와 LLM의 실패를 정상값으로 숨기지 않는 설계
-- 실제 모델 오류를 eval과 사람 검토로 발견하고 guardrail로 보완한 과정
-- 결과뿐 아니라 근거와 실행 상태를 artifact로 남기는 관측 가능성
-- 이미 검증된 workflow 위에 최소 권한 Agent를 추가하는 방식
-
-프로젝트를 본인 말로 학습하기 위한 설명은 [Project Understanding Guide](docs/UNDERSTANDING_GUIDE.md)에서 확인할 수 있습니다.
+허용 도구는 report 생성, 과거 run 상태 조회, 프로젝트 금융 지표 설명의 세 가지입니다.
 
 ## Disclaimer
 
-이 프로젝트는 연구·교육 목적의 금융 데이터 리포팅 자동화 예제입니다. 출력은 투자 자문, 종목 추천, 매수·매도 신호 또는 미래 성과 보장을 제공하지 않습니다.
+이 프로젝트는 LLM application architecture, validation, evaluation과 failure handling을 학습·시연하기 위한 포트폴리오입니다. 생성 결과는 투자 자문, 매수·매도 신호 또는 미래 성과 보장을 제공하지 않습니다.
