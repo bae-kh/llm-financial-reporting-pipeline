@@ -1,6 +1,6 @@
 # LLM Financial Reporting
 
-> Python으로 금융 지표를 결정론적으로 계산하고, headline 기반 LLM 뉴스 분석과 supporting evidence를 결합한 재현 가능한 금융 리포팅 파이프라인입니다.
+> Python으로 금융 지표를 결정론적으로 계산하고, headline 기반 LLM 뉴스 분석을 supporting article과 연결하며 실행 artifact를 추적하는 금융 리포팅 파이프라인입니다.
 
 가격 계산, 외부 데이터 수집, LLM 생성, 검증·재작성, artifact 저장을 하나의 workflow로 연결했습니다. 핵심은 모든 작업을 LLM에 맡기는 것이 아니라, 정확성과 재현성이 필요한 영역은 Python으로 고정하고 비정형 뉴스 해석만 LLM에 제한하는 것입니다.
 
@@ -12,8 +12,8 @@
 
 - Python으로 기간 수익률, 연환산 변동성, MDD, RSI(14), MACD difference 계산
 - 대상 종목과 동일한 실제 거래일 기준 SPY benchmark 비교
-- Google News RSS headline metadata 수집, 기간 필터, 중복·저정보성 페이지 제거
-- 날짜 균형과 사건 중요도를 결합해 최대 60개 headline 선택
+- Google News RSS headline metadata 수집, 기간 필터, 정규화 제목/URL 기반 중복 제거, 저정보성 페이지 필터링
+- 날짜 균형과 headline 키워드 기반 중요도를 결합해 최대 60개 headline 선택
 - OpenAI Structured Output으로 Summary, sentiment, Topic, supporting article ID 생성
 - Pydantic·allow-list·제한된 사건 규칙 검증과 최대 2회 재작성 후 fail-closed fallback
 - Markdown·News Snapshot·RunMetadata와 오프라인 정적 HTML 리포트 생성
@@ -56,11 +56,9 @@ flowchart TD
 정적 HTML은 저장된 Markdown, News Snapshot, RunMetadata만 읽으며 외부 API를 다시 호출하지 않습니다.
 
 - KPI와 benchmark는 Python 계산 결과입니다.
-- 각 LLM Topic은 Snapshot의 supporting headline과 연결됩니다.
+- 각 LLM Topic은 supporting article ID를 통해 Snapshot의 headline과 연결해 표시됩니다.
 - `ID validated`는 ID가 선택 입력/Snapshot에 존재한다는 뜻이며 의미적 근거 적합성을 보장하지 않습니다.
 - Human Review 상태와 자동 검증 상태를 분리해 표시합니다.
-
-대표 화면은 `1920×1080` 첫 viewport를 기준으로 하며 Hero, KPI, benchmark, LLM Summary와 첫 Topic 일부가 보이도록 구성했습니다.
 
 ## Validation & Failure Handling
 
@@ -69,7 +67,7 @@ LLM 출력은 다음 순서로 처리합니다.
 1. OpenAI Structured Output parsing
 2. Pydantic schema 검증
 3. 선택된 supporting article ID allow-list 검증
-4. 차량 인도 거점·인도 대수·리콜 등 제한된 사건 grounding 규칙
+4. 일부 사건 유형에 대한 제한된 headline grounding 규칙
 5. 금지 표현과 일부 headline 정책 검사
 6. 검증 실패 시 오류 사유를 전달해 최대 2회 재작성
 7. 세 번째 결과도 실패하면 `available=false`, `unavailable`, `fallback_used=true`
@@ -80,15 +78,13 @@ LLM 출력은 다음 순서로 처리합니다.
 
 ## Evaluation & Experiments
 
-Evaluation v2는 Dataset version/hash, attempt telemetry, case별 grading, validator reliability와 Human Review 자료를 같은 `eval_run_id`로 연결합니다. Validator pass rate와 semantic accuracy는 별도 지표로 취급합니다.
+Evaluation v2는 Dataset version/hash, attempt telemetry, grading과 Human Review 자료를 같은 `eval_run_id`로 연결합니다. Validator pass rate와 semantic accuracy는 별도로 취급합니다.
 
 주요 검증 기록:
 
-- TSLA 실제 headline 5개 development dataset과 별도 legacy synthetic 6-case 유지
-- First-pass·Final-pass validator pass, Rewrite Rescue, Attempt 수, Unavailable Rate 집계 기반 구현
-- Prompt v3·Validator v2 조합으로 MSFT와 AAPL Live E2E를 각각 1회 실행하고 저장 artifact를 Offline 품질 감사
-- Prompt v3/v4를 MSFT·AAPL의 동일한 재구성 60-headline 입력과 동일 validator로 비교
-- 고정 Snapshot 비교 4개 case에서 총 11회 generation attempt 기록
+- 실제 headline 기반 development dataset과 synthetic regression case로 평가 경로 검증
+- MSFT·AAPL Live E2E 저장 artifact에 대한 Offline 품질 감사
+- Prompt v3/v4를 MSFT·AAPL의 동일하게 재구성한 60-headline 입력과 동일 validator로 비교
 - MSFT는 v3·v4 모두 `unavailable`, AAPL은 v3·v4 모두 `available`
 - AAPL v4에서 동일 buyback headline 중복 인용이 사라진 사례를 관찰했지만, unrelated evidence와 unsupported claim 후보는 남음
 
